@@ -2,18 +2,18 @@
 #
 # ollama multirun
 #
-# Run a prompt against all models in ollama, save the modelFile as web pages
-#
-# Requires: ollama, bash, expect, awk, sed, tr, wc
+# Run a prompt against all models in ollama, save the output as web pages
 #
 # Usage:
 #  - Enter prompt manually:    ./multirun.sh
 #  - Enter prompt from a file: ./multirun.sh < prompt.txt
 #  - Enter prompt from pipe:   echo "your prompt" | ./multirun.sh
 #  - Enter prompt with text and file:  echo "explain this file: $(cat filename)" | ./multirun.sh
+#
+# Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama-multirun"
-VERSION="1.4"
+VERSION="1.5"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -77,11 +77,12 @@ function clear_model {
 function setHeaderAndFooter {
   HEADER=$(cat <<EOF
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
     font-family: monospace;
-    margin: 5px;
   }
   textarea {
     white-space: pre-wrap;
@@ -89,8 +90,7 @@ function setHeaderAndFooter {
   }
   header, footer {
     background-color: #f0f0f0;
-    margin: 5px;
-    padding: 5px;
+    padding: 10px;
   }
   .menu {
     font-size: small;
