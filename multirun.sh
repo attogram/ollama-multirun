@@ -12,7 +12,7 @@
 #  - Enter prompt from pipe:   echo "your prompt" | ./multirun.sh
 
 NAME="ollama-multirun"
-VERSION="1.1"
+VERSION="1.2"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -102,6 +102,18 @@ EOF
   )
 }
 
+function createMenu {
+  local currentModel="$1"
+  echo "Models: "
+  for modelName in $models; do
+    if [ "$modelName" == "$currentModel" ]; then
+      echo "<b>$modelName</b>, "
+    else
+      echo "<a href='./$modelName.html'>$modelName</a>, "
+    fi
+  done
+}
+
 function createResultsIndexFile {
   resultsIndexFile="results/index.html"
   echo "Creating: $resultsIndexFile"
@@ -127,7 +139,10 @@ function createHtmlFile {
       echo "Creating: $htmlFile"
       {
         echo "$HEADER<title>$NAME: $model</title></head><body>"
-        echo "<header><p><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b></p></header>"
+        echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
+        createMenu "$model"
+        echo "</header>"
+
         echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
         textarea "$prompt" 1
         echo "</p>"
@@ -167,7 +182,9 @@ indexFile="$directory/index.html"
 echo "Creating: $indexFile"
 {
   echo "$HEADER<title>$NAME: $tag</title></head><body>"
-  echo "<header><p><a href='../index.html'>$NAME</a>: <b>$tag</b></p></header>"
+  echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b><br /><br />"
+  createMenu "index"
+  echo  "</header>"
   echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
   textarea "$prompt" 1
   echo "</p><p>Models:</p><ul>"
