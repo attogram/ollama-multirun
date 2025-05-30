@@ -13,7 +13,7 @@
 #  - Enter prompt with text and file:  echo "explain this file: $(cat filename)" | ./multirun.sh
 
 NAME="ollama-multirun"
-VERSION="1.3"
+VERSION="1.4"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -123,7 +123,7 @@ function createResultsIndexFile {
   resultsIndexFile="results/index.html"
   echo "Creating: $resultsIndexFile"
   {
-    echo "$HEADER<title>$NAME: results</title></html><body>"
+    echo "$HEADER<title>$NAME: results</title></head><body>"
     echo "<header><p><b>$NAME</b>: results:</p></header>"
     echo "<ul>"
 
