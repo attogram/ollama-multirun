@@ -10,9 +10,10 @@
 #  - Enter prompt manually:    ./multirun.sh
 #  - Enter prompt from a file: ./multirun.sh < prompt.txt
 #  - Enter prompt from pipe:   echo "your prompt" | ./multirun.sh
+#  - Enter prompt with text and file:  echo "explain this file: $(cat filename)" | ./multirun.sh
 
 NAME="ollama-multirun"
-VERSION="1.2"
+VERSION="1.3"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -79,24 +80,27 @@ function setHeaderAndFooter {
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
-    margin: 5px;
     font-family: monospace;
+    margin: 5px;
   }
   textarea {
-    width: 90%;
     white-space: pre-wrap;
+    width: 90%;
   }
   header, footer {
-    margin: 0;
-    padding: 0;
     background-color: #f0f0f0;
+    margin: 5px;
+    padding: 5px;
+  }
+  .menu {
+    font-size: small;
   }
 </style>
 EOF
   )
 
   FOOTER=$(cat <<EOF
-<footer><p>Generated with <a target='$URL' href='$URL'>$NAME</a> v$VERSION</p></footer>
+<footer><p>Generated with <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p></footer>
 </body></html>
 EOF
   )
@@ -104,7 +108,7 @@ EOF
 
 function createMenu {
   local currentModel="$1"
-  echo "Models: "
+  echo "<span class='menu'>Models: "
   for modelName in $models; do
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b>, "
@@ -112,6 +116,7 @@ function createMenu {
       echo "<a href='./$modelName.html'>$modelName</a>, "
     fi
   done
+  echo '</span>';
 }
 
 function createResultsIndexFile {
@@ -158,6 +163,7 @@ function createHtmlFile {
         echo "$stats" > "$statsFile" # save cleaned stats
         textarea "$stats" 0
         echo "</p>"
+        echo "<p>ollama Model Info: <a target='ollama' href='https://ollama.com/library/${model}'>$model</a></p>"
         echo "<p>Created on $(date '+%Y-%m-%d %H:%M:%S')</p>"
         echo "$FOOTER"
       } > "$htmlFile"
@@ -187,7 +193,7 @@ echo "Creating: $indexFile"
   echo  "</header>"
   echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
   textarea "$prompt" 1
-  echo "</p><p>Models:</p><ul>"
+  echo "</p><p>Model Outputs:</p><ul>"
 } > "$indexFile"
 
 # Loop through each model and run it with the given prompt
