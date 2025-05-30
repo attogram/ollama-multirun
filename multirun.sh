@@ -12,8 +12,8 @@
 #
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
-NAME="ollama-multirun"
-VERSION="1.5"
+NAME="ollama multirun"
+VERSION="1.6"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -43,10 +43,14 @@ function textarea() {
   if [ -z "$padding" ]; then
     padding=0
   fi
+  local max="$3"
+  if [ -z "$max" ]; then
+    max=25
+  fi
   local lines=$(echo "$content\n" | wc -l) # Get number of lines in content
   lines=$((lines + padding))
-  if [ "$lines" -gt 25 ]; then
-    lines=25
+  if [ "$lines" -gt "$max" ]; then
+    lines=$max
   fi
   content=$(echo "$content" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g') # Escape HTML special characters
   echo "<textarea readonly rows='$lines'>${content}</textarea>"
@@ -126,17 +130,29 @@ function createResultsIndexFile {
     echo "$HEADER<title>$NAME: results</title></head><body>"
     echo "<header><p><b>$NAME</b>: results:</p></header>"
     echo "<ul>"
-
     for dir in results/*; do
       if [ -d "$dir" ]; then
         echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
       fi
     done
-
     echo "</ul>"
     echo "<p>Created on $(date '+%Y-%m-%d %H:%M:%S')</p>"
     echo "$FOOTER"
   } > $resultsIndexFile
+}
+
+function createIndexFile {
+  indexFile="$directory/index.html"
+  echo "Creating: $indexFile"
+  {
+    echo "$HEADER<title>$NAME: $tag</title></head><body>"
+    echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b><br /><br />"
+    createMenu "index"
+    echo  "</header>"
+    echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
+    textarea "$prompt" 0 10 # 0 padding, max 10 lines
+    echo "</p><p>Model Outputs:</p><ul>"
+  } > "$indexFile"
 }
 
 function createHtmlFile {
@@ -147,21 +163,18 @@ function createHtmlFile {
         echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
         createMenu "$model"
         echo "</header>"
-
         echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
-        textarea "$prompt" 1
+        textarea "$prompt" 0 10 # 0 padding, max 10 lines
         echo "</p>"
-
         echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
-        textarea "$(cat "$modelFile")" 5
+        textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
         echo "</p>"
-
         echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
         stats="$(cat "$statsFile")" # get content of stats file
         stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
         stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
         echo "$stats" > "$statsFile" # save cleaned stats
-        textarea "$stats" 0
+        textarea "$stats" 0 10 # 0 padding, max 10 lines
         echo "</p>"
         echo "<p>ollama Model Info: <a target='ollama' href='https://ollama.com/library/${model}'>$model</a></p>"
         echo "<p>Created on $(date '+%Y-%m-%d %H:%M:%S')</p>"
@@ -172,29 +185,17 @@ function createHtmlFile {
 setPrompt
 echo; echo "Prompt:"; echo "$prompt"
 
-tag=$(safeTag "$prompt")
-directory="results/${tag}_$(date '+%Y-%m-%d-%H-%M-%S')"
 echo; echo "Creating: $directory/"
+tag=$(safeTag "$prompt")
+directory="results/${tag}_$(date '+%Y%m%d-%H%M%S')"
 mkdir -p "$directory"
 
 echo "Creating: $directory/prompt.txt"
 echo "$prompt" > "$directory/prompt.txt"
 
 setHeaderAndFooter
-
 createResultsIndexFile
-
-indexFile="$directory/index.html"
-echo "Creating: $indexFile"
-{
-  echo "$HEADER<title>$NAME: $tag</title></head><body>"
-  echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b><br /><br />"
-  createMenu "index"
-  echo  "</header>"
-  echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
-  textarea "$prompt" 1
-  echo "</p><p>Model Outputs:</p><ul>"
-} > "$indexFile"
+createIndexFile
 
 # Loop through each model and run it with the given prompt
 for model in $models; do
@@ -212,7 +213,7 @@ done
 # Finish the index file
 {
   echo "</ul>"
-  echo "Created on $(date '+%Y-%m-%d %H:%M:%S')</p>"
+  echo "Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
   echo "$FOOTER"
 } >> "$indexFile"
 
