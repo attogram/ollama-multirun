@@ -13,7 +13,7 @@
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="1.8"
+VERSION="1.9"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -37,7 +37,7 @@ function createResultsDirectory {
 function setPrompt {
   if [ -t 0 ]; then
     echo "Enter prompt:";
-    read prompt
+    read -r prompt
   else
     prompt=$(cat)  # get piped input
   fi
@@ -45,9 +45,11 @@ function setPrompt {
 }
 
 function savePrompt {
-  echo "Creating: $directory/prompt.txt"
-  echo "$prompt" > "$directory/prompt.txt"
+  promptFile="$directory/prompt.txt"
+  echo "Creating: $promptFile"
+  echo "$prompt" > "$promptFile"
 
+  # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
   echo "Creating: $directory/$tag.prompt.yaml"
   (
     echo "name: $tag"
@@ -58,8 +60,20 @@ function savePrompt {
     echo "    content:"
     echo "  - role: user"
     echo "    content: |"
-    echo "$prompt"
+    while IFS= read -r line; do
+      echo "      $line"
+    done <<< "$prompt"
   ) > "$directory/$tag.prompt.yaml"
+}
+
+
+function showPrompt {
+    promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
+    promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
+    echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
+    echo " words:$promptWords  bytes:$promptBytes<br />"
+    textarea "$prompt" 0 10 # 0 padding, max 10 lines
+    echo "</p>"
 }
 
 function textarea() {
@@ -89,7 +103,7 @@ function safeTag() {
     input=${input:0:50} # Truncate to first 50 characters
     input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
     input=$(echo "$input" | sed "s/ /_/g") # Replace spaces with underscores
-    input=$(echo "$input" | sed 's/[^a-zA-Z0-9_\-]/_/g' | tr -cd 'a-zA-Z0-9_-')
+    input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_')
     echo "$input" # Output the sanitized string
 }
 
@@ -131,9 +145,15 @@ function setHeaderAndFooter {
     border-collapse: collapse;
   }
   td, th {
-    border: 1px solid black;
-    text-align: left;
+    border: 1px solid #cccccc;
+    text-align: right;
     padding: 5px;
+  }
+  .left {
+    text-align: left;
+  }
+  li {
+    margin: 5px;
   }
 </style>
 EOF
@@ -185,18 +205,48 @@ function createIndexFile {
     echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b><br /><br />"
     createMenu "index"
     echo  "</header>"
-    echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)<br />"
-    textarea "$prompt" 0 10 # 0 padding, max 10 lines
-    echo "</p>"
-    #echo "<p>Model Outputs:</p>"
-    echo "<table><tr><th>model</th><th>words</th><th>bytes</th></tr>"
+    showPrompt
+    cat <<- "EOF"
+</p>
+<table>
+  <tr>
+    <th class='left'>model</th>
+    <th>words</th>
+    <th>bytes</th>
+    <th>total<br />duration</th>
+    <th>load<br />duration</th>
+    <th>prompt eval<br />count</th>
+    <th>prompt eval<br />duration</th>
+    <th>prompt eval<br />rate</th>
+    <th>eval<br />count</th>
+    <th>eval<br />duration</th>
+    <th>eval<br />rate</th>
+  </tr>
+EOF
   } > "$indexFile"
 }
 
 function addModelToIndexFile {
     responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
     responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
-    echo "<tr><td><a href='./$model.html'>$model</a></td><td>$responseWords</td><td>${responseBytes}</td></tr>" >> "$indexFile"
+
+    # parse the stats file into an array, splitting on : character, getting the second part of each line
+    statsInfo=()
+    while read -r line; do
+      value=$(echo "$line" | cut -d ':' -f2)
+      statsInfo+=("$value")
+    done < "$statsFile"
+
+    (
+        echo "<tr><td class='left'><a href='./$model.html'>$model</a></td><td >$responseWords</td><td>${responseBytes}</td>"
+        for value in "${statsInfo[@]}"; do
+            if [[ -n "$value" ]]; then
+              echo "<td>${value}</td>";
+            fi
+        done
+        echo "</tr>"
+    ) >> "$indexFile"
+
 }
 
 function finishIndexFile {
@@ -222,13 +272,10 @@ function createModelFile {
         echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
         createMenu "$model"
         echo "</header>"
-        echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)<br />"
-        textarea "$prompt" 0 10 # 0 padding, max 10 lines
-        echo "</p>"
+        showPrompt
         echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
         textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
         echo "</p>"
-        getStats
         echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
         textarea "$stats" 0 10 # 0 padding, max 10 lines
         echo "</p>"
@@ -255,6 +302,7 @@ for model in $models; do
     echo "Creating: $statsFile"
     ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
     clear_model "$model"
+    getStats
     createModelFile
     addModelToIndexFile
 done
