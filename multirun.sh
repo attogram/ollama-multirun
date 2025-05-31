@@ -13,7 +13,7 @@
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="2.0"
+VERSION="2.1"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -53,17 +53,15 @@ function savePrompt {
   # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
   echo "Creating: $directory/$tag.prompt.yaml"
   (
-    echo "name: $tag"
-    echo "description: "
-    echo "model: "
     echo "messages:"
     echo "  - role: system"
-    echo "    content:"
+    echo "    content: ''"
     echo "  - role: user"
     echo "    content: |"
     while IFS= read -r line; do
       echo "      $line"
     done <<< "$prompt"
+    echo "model: ''"
   ) > "$directory/$tag.prompt.yaml"
 }
 
