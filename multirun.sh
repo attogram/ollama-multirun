@@ -13,8 +13,9 @@
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="1.9"
+VERSION="2.0"
 URL="https://github.com/attogram/ollama-multirun"
+RESULTS_DIRECTORY="results"
 
 echo; echo "$NAME v$VERSION"; echo
 
@@ -29,7 +30,7 @@ function setModels {
 
 function createResultsDirectory {
   tag=$(safeTag "$prompt")
-  directory="results/${tag}_$(date '+%Y%m%d-%H%M%S')"
+  directory="${RESULTS_DIRECTORY}/${tag}_$(date '+%Y%m%d-%H%M%S')"
   echo; echo "Creating: $directory/"
   mkdir -p "$directory"
 }
@@ -66,12 +67,11 @@ function savePrompt {
   ) > "$directory/$tag.prompt.yaml"
 }
 
-
 function showPrompt {
     promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
     promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
     echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
-    echo " words:$promptWords  bytes:$promptBytes<br />"
+    echo "  words:$promptWords  bytes:$promptBytes<br />"
     textarea "$prompt" 0 10 # 0 padding, max 10 lines
     echo "</p>"
 }
@@ -125,36 +125,17 @@ function setHeaderAndFooter {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body {
-    font-family: monospace;
-  }
-  textarea {
-    white-space: pre-wrap;
-    width: 90%;
-  }
-  header, footer {
-    background-color: #f0f0f0;
-    padding: 10px;
-  }
-  .menu {
-    font-size: small;
-  }
-  table, td, th {
-    border-collapse: collapse;
-  }
-  td, th {
-    border: 1px solid #cccccc;
-    text-align: right;
-    padding: 5px;
-  }
-  .left {
-    text-align: left;
-  }
-  li {
-    margin: 5px;
-  }
+  body { font-family: monospace; }
+  textarea { border: 1px solid #cccccc; white-space: pre-wrap; width: 90%; }
+  header, footer { background-color: #f0f0f0; padding: 10px; }
+  .menu { font-size: small; }
+  table, td, th { border-collapse: collapse; }
+  td, th { border: 1px solid #cccccc; padding: 5px; text-align: right; }
+  .left { text-align: left; }
+  li { margin: 5px; }
 </style>
 EOF
   )
@@ -180,13 +161,13 @@ function createMenu {
 }
 
 function createResultsIndexFile {
-  resultsIndexFile="results/index.html"
+  resultsIndexFile="${RESULTS_DIRECTORY}/index.html"
   echo "Creating: $resultsIndexFile"
   {
     echo "$HEADER<title>$NAME: results</title></head><body>"
     echo "<header><p><b>$NAME</b></p></header>"
     echo "<ul>"
-    for dir in results/*; do
+    for dir in "$RESULTS_DIRECTORY"/*; do
       if [ -d "$dir" ]; then
         echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
       fi
@@ -207,7 +188,6 @@ function createIndexFile {
     echo  "</header>"
     showPrompt
     cat <<- "EOF"
-</p>
 <table>
   <tr>
     <th class='left'>model</th>
@@ -229,24 +209,16 @@ EOF
 function addModelToIndexFile {
     responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
     responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
-
-    # parse the stats file into an array, splitting on : character, getting the second part of each line
-    statsInfo=()
-    while read -r line; do
-      value=$(echo "$line" | cut -d ':' -f2)
-      statsInfo+=("$value")
-    done < "$statsFile"
-
     (
-        echo "<tr><td class='left'><a href='./$model.html'>$model</a></td><td >$responseWords</td><td>${responseBytes}</td>"
-        for value in "${statsInfo[@]}"; do
-            if [[ -n "$value" ]]; then
-              echo "<td>${value}</td>";
-            fi
-        done
+        echo "<tr><td class='left'><a href='./$model.html'>$model</a></td><td >$responseWords</td><td>$responseBytes</td>"
+        while read -r line; do
+          value=$(echo "$line" | cut -d ':' -f2) # parse the stats file per line, splitting on : character, getting the second part as the value
+          if [[ -n "$value" ]]; then
+            echo "<td>${value}</td>";
+          fi
+        done < "$statsFile"
         echo "</tr>"
     ) >> "$indexFile"
-
 }
 
 function finishIndexFile {
@@ -267,13 +239,15 @@ function getStats {
 function createModelFile {
       modelHtmlFile="$directory/$model.html"
       echo "Creating: $modelHtmlFile"
+      resultsWords=$(wc -w < "$modelFile" | awk '{print $1}')
+      resultsBytes=$(wc -c < "$modelFile" | awk '{print $1}')
       {
         echo "$HEADER<title>$NAME: $model</title></head><body>"
         echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
         createMenu "$model"
         echo "</header>"
         showPrompt
-        echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
+        echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)  words:$resultsWords  bytes:$resultsBytes<br />"
         textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
         echo "</p>"
         echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
@@ -295,7 +269,7 @@ createIndexFile
 
 # Loop through each model and run it with the given prompt
 for model in $models; do
-    echo; echo "Running Model: $model"
+    echo; echo "Running model: $model"
     modelFile="$directory/$model.txt"
     statsFile="$directory/$model.stats.txt"
     echo "Creating: $modelFile"
