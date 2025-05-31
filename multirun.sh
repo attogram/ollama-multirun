@@ -2,18 +2,18 @@
 #
 # ollama multirun
 #
-# Run a prompt against all models in ollama, save the output as web pages
+# Bash shell script to run a prompt against all models in ollama, and save the output as web pages
 #
 # Usage:
-#  - Enter prompt manually:    ./multirun.sh
-#  - Enter prompt from a file: ./multirun.sh < prompt.txt
-#  - Enter prompt from pipe:   echo "your prompt" | ./multirun.sh
-#  - Enter prompt with text and file:  echo "explain this file: $(cat filename)" | ./multirun.sh
+#  - Enter prompt manually:  ./multirun.sh
+#  - Enter prompt from file: ./multirun.sh < prompt.txt
+#  - Enter prompt from pipe: echo "your prompt" | ./multirun.sh
+#                            echo "summarize this file: $(cat filename)" | ./multirun.sh
 #
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="1.6"
+VERSION="1.7"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -32,6 +32,24 @@ function setPrompt {
   else
     prompt=$(cat)  # get piped input
   fi
+}
+
+function savePrompt {
+  echo "Creating: $directory/prompt.txt"
+  echo "$prompt" > "$directory/prompt.txt"
+
+  echo "Creating: $directory/$tag.prompt.yaml"
+  (
+    echo "name: $tag"
+    echo "description: "
+    echo "model: "
+    echo "messages:"
+    echo "  - role: system"
+    echo "    content:"
+    echo "  - role: user"
+    echo "    content: |"
+    echo "$prompt"
+  ) > "$directory/$tag.prompt.yaml"
 }
 
 function textarea() {
@@ -112,12 +130,12 @@ EOF
 
 function createMenu {
   local currentModel="$1"
-  echo "<span class='menu'>Models: "
+  echo "<span class='menu'>models: "
   for modelName in $models; do
     if [ "$modelName" == "$currentModel" ]; then
-      echo "<b>$modelName</b>, "
+      echo "<b>$modelName</b> "
     else
-      echo "<a href='./$modelName.html'>$modelName</a>, "
+      echo "<a href='./$modelName.html'>$modelName</a> "
     fi
   done
   echo '</span>';
@@ -128,7 +146,7 @@ function createResultsIndexFile {
   echo "Creating: $resultsIndexFile"
   {
     echo "$HEADER<title>$NAME: results</title></head><body>"
-    echo "<header><p><b>$NAME</b>: results:</p></header>"
+    echo "<header><p><b>$NAME</b></p></header>"
     echo "<ul>"
     for dir in results/*; do
       if [ -d "$dir" ]; then
@@ -136,7 +154,7 @@ function createResultsIndexFile {
       fi
     done
     echo "</ul>"
-    echo "<p>Created on $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo "<p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
     echo "$FOOTER"
   } > $resultsIndexFile
 }
@@ -149,13 +167,20 @@ function createIndexFile {
     echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b><br /><br />"
     createMenu "index"
     echo  "</header>"
-    echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
+    echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)<br />"
     textarea "$prompt" 0 10 # 0 padding, max 10 lines
     echo "</p><p>Model Outputs:</p><ul>"
   } > "$indexFile"
 }
 
-function createHtmlFile {
+function getStats {
+    stats="$(cat "$statsFile")" # get content of stats file
+    stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
+    stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
+    echo "$stats" > "$statsFile" # save cleaned stats
+}
+
+function createModelFile {
       htmlFile="$directory/$model.html"
       echo "Creating: $htmlFile"
       {
@@ -163,21 +188,18 @@ function createHtmlFile {
         echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
         createMenu "$model"
         echo "</header>"
-        echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>)<br />"
+        echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)<br />"
         textarea "$prompt" 0 10 # 0 padding, max 10 lines
         echo "</p>"
         echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
         textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
         echo "</p>"
+        getStats
         echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
-        stats="$(cat "$statsFile")" # get content of stats file
-        stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
-        stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
-        echo "$stats" > "$statsFile" # save cleaned stats
         textarea "$stats" 0 10 # 0 padding, max 10 lines
         echo "</p>"
         echo "<p>ollama Model Info: <a target='ollama' href='https://ollama.com/library/${model}'>$model</a></p>"
-        echo "<p>Created on $(date '+%Y-%m-%d %H:%M:%S')</p>"
+        echo "<p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
         echo "$FOOTER"
       } > "$htmlFile"
 }
@@ -190,8 +212,7 @@ tag=$(safeTag "$prompt")
 directory="results/${tag}_$(date '+%Y%m%d-%H%M%S')"
 mkdir -p "$directory"
 
-echo "Creating: $directory/prompt.txt"
-echo "$prompt" > "$directory/prompt.txt"
+savePrompt
 
 setHeaderAndFooter
 createResultsIndexFile
@@ -206,8 +227,11 @@ for model in $models; do
     echo "Creating: $statsFile"
     ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
     clear_model "$model"
-    createHtmlFile
-    echo "<li><a href='./$model.html'>$model</a></li>" >> "$indexFile"
+    createModelFile
+
+    responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
+    responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
+    echo "<li><a href='./$model.html'>$model</a> (${responseBytes}k) ($responseWords words)</li>" >> "$indexFile"
 done
 
 # Finish the index file
