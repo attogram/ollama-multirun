@@ -13,17 +13,26 @@
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="1.7"
+VERSION="1.8"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
 
-models=$(ollama list | awk '{if (NR > 1) print $1}' | sort) # Get list of models, sorted alphabetically
-echo "Models:"; echo "$models"; echo
-if [ -z "$models" ]; then
-  echo "No models found. Please install models with 'ollama pull <model-name>'"
-  exit 1
-fi
+function setModels {
+  models=$(ollama list | awk '{if (NR > 1) print $1}' | sort) # Get list of models, sorted alphabetically
+  echo "Models:"; echo "$models"; echo
+  if [ -z "$models" ]; then
+    echo "No models found. Please install models with 'ollama pull <model-name>'"
+    exit 1
+  fi
+}
+
+function createResultsDirectory {
+  tag=$(safeTag "$prompt")
+  directory="results/${tag}_$(date '+%Y%m%d-%H%M%S')"
+  echo; echo "Creating: $directory/"
+  mkdir -p "$directory"
+}
 
 function setPrompt {
   if [ -t 0 ]; then
@@ -32,6 +41,7 @@ function setPrompt {
   else
     prompt=$(cat)  # get piped input
   fi
+  echo; echo "Prompt:"; echo "$prompt"
 }
 
 function savePrompt {
@@ -117,6 +127,14 @@ function setHeaderAndFooter {
   .menu {
     font-size: small;
   }
+  table, td, th {
+    border-collapse: collapse;
+  }
+  td, th {
+    border: 1px solid black;
+    text-align: left;
+    padding: 5px;
+  }
 </style>
 EOF
   )
@@ -154,7 +172,7 @@ function createResultsIndexFile {
       fi
     done
     echo "</ul>"
-    echo "<p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo "<br /><br /><p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
     echo "$FOOTER"
   } > $resultsIndexFile
 }
@@ -169,8 +187,24 @@ function createIndexFile {
     echo  "</header>"
     echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)<br />"
     textarea "$prompt" 0 10 # 0 padding, max 10 lines
-    echo "</p><p>Model Outputs:</p><ul>"
+    echo "</p>"
+    #echo "<p>Model Outputs:</p>"
+    echo "<table><tr><th>model</th><th>words</th><th>bytes</th></tr>"
   } > "$indexFile"
+}
+
+function addModelToIndexFile {
+    responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
+    responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
+    echo "<tr><td><a href='./$model.html'>$model</a></td><td>$responseWords</td><td>${responseBytes}</td></tr>" >> "$indexFile"
+}
+
+function finishIndexFile {
+  {
+    echo "</table>"
+    echo "<br /><br /><p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo "$FOOTER"
+  } >> "$indexFile"
 }
 
 function getStats {
@@ -181,8 +215,8 @@ function getStats {
 }
 
 function createModelFile {
-      htmlFile="$directory/$model.html"
-      echo "Creating: $htmlFile"
+      modelHtmlFile="$directory/$model.html"
+      echo "Creating: $modelHtmlFile"
       {
         echo "$HEADER<title>$NAME: $model</title></head><body>"
         echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
@@ -201,19 +235,13 @@ function createModelFile {
         echo "<p>ollama Model Info: <a target='ollama' href='https://ollama.com/library/${model}'>$model</a></p>"
         echo "<p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
         echo "$FOOTER"
-      } > "$htmlFile"
+      } > "$modelHtmlFile"
 }
 
+setModels
 setPrompt
-echo; echo "Prompt:"; echo "$prompt"
-
-echo; echo "Creating: $directory/"
-tag=$(safeTag "$prompt")
-directory="results/${tag}_$(date '+%Y%m%d-%H%M%S')"
-mkdir -p "$directory"
-
+createResultsDirectory
 savePrompt
-
 setHeaderAndFooter
 createResultsIndexFile
 createIndexFile
@@ -228,17 +256,9 @@ for model in $models; do
     ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
     clear_model "$model"
     createModelFile
-
-    responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
-    responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
-    echo "<li><a href='./$model.html'>$model</a> (${responseBytes}k) ($responseWords words)</li>" >> "$indexFile"
+    addModelToIndexFile
 done
 
-# Finish the index file
-{
-  echo "</ul>"
-  echo "Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
-  echo "$FOOTER"
-} >> "$indexFile"
+finishIndexFile
 
-echo; echo "Completed all Model runs: $directory/"
+echo; echo "Done: $directory/"
