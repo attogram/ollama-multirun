@@ -12,6 +12,17 @@ Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
 
+## Screenshots
+
+Run results:
+![Screenshot of the run page](docs/run.page.png)
+
+Model page:
+![Screenshot of the index page](docs/model.page.png)
+
+Index page:
+![Screenshot of the index page](docs/main.index.png)
+
 ## ✨ Features
 
 * **Batch Processing:** Run a single prompt across all models listed by `ollama list`.
