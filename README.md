@@ -38,8 +38,8 @@ Repo: https://github.com/attogram/ollama-multirun
 
 Before running `ollama multirun`, ensure you have the following installed:
 
-* **[Ollama](https://ollama.com/):** The core large language model runner.
-* **Bash:** The default shell on most Linux and macOS systems.
+* **[ollama](https://ollama.com/):** The core large language model runner.
+* **bash:** The default shell on most Linux and macOS systems.
 * **`expect`:** For interacting with Ollama's `run` command (`sudo apt-get install expect` on Debian/Ubuntu, `brew install expect` on macOS).
 * **Standard Unix Utilities:** `awk`, `sed`, `tr`, `wc` (typically pre-installed).
 
@@ -118,23 +118,16 @@ ollama-multirun/
 
 We welcome contributions! Whether it's a bug report, a feature suggestion, or a code change, your input is valuable.
  * Fork the repository.
- * Clone your forked repository:
-   git clone https://github.com/YOUR_USERNAME/ollama-multirun.git
-cd ollama-multirun
-
- * Create a new branch:
-   git checkout -b feature/your-feature-name
-
+ * Clone your forked repository: ```git clone https://github.com/YOUR_USERNAME/ollama-multirun.git```
+ * ```cd ollama-multirun```
+ * Create a new branch: ```git checkout -b feature/your-feature-name```
  * Make your changes.
  * Test your changes thoroughly.
- * Commit your changes:
-   git commit -m "feat: Add a new feature (e.g., --output-json option)"
-
- * Push to your branch:
-   git push origin feature/your-feature-name
-
+ * Commit your changes: ```git commit -m "feat: Add a new feature (e.g., --output-json option)"```
+ * Push to your branch: ```git push origin feature/your-feature-name```
  * Open a Pull Request on the original repository, detailing your changes.
-Reporting Issues
+
+## Reporting Issues
 If you encounter any bugs or have feature requests, please open an issue on the GitHub Issues page.
 
 ## 📜 License
