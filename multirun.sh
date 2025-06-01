@@ -5,15 +5,16 @@
 # Bash shell script to run a prompt against all models in ollama, and save the output as web pages
 #
 # Usage:
-#  - Enter prompt manually:  ./multirun.sh
-#  - Enter prompt from file: ./multirun.sh < prompt.txt
-#  - Enter prompt from pipe: echo "your prompt" | ./multirun.sh
-#                            echo "summarize this file: $(cat filename)" | ./multirun.sh
+#  - Enter prompt manually:    ./multirun.sh
+#  - Enter prompt as argument: ./multirun.sh "your prompt"
+#  - Enter prompt from file:   ./multirun.sh < prompt.txt
+#  - Enter prompt from pipe:   echo "your prompt" | ./multirun.sh
+#                              echo "summarize this file: $(cat filename)" | ./multirun.sh
 #
-# Requires: ollama, bash, expect, awk, sed, tr, uname, wc
+# Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
 
 NAME="ollama multirun"
-VERSION="2.6"
+VERSION="2.7"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -36,13 +37,18 @@ function createResultsDirectory {
 }
 
 function setPrompt {
-  if [ -t 0 ]; then
-    echo "Enter prompt:";
-    read -r prompt
-  else
-    prompt=$(cat)  # get piped input
+  if [ "${BASH_ARGV[0]}" ]; then
+      prompt="${BASH_ARGV[0]}" # Use the first argument as the prompt
+      return
   fi
-  echo; echo "Prompt:"; echo "$prompt"
+
+  if [ -t 0 ]; then # Check if input is from a terminal (interactive)
+    echo "Enter prompt:";
+    read -r prompt # Read prompt from user input
+    return
+  fi
+
+  prompt=$(cat) # Read from standard input (pipe or file)
 }
 
 function savePrompt {
