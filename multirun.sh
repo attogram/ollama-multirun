@@ -10,10 +10,10 @@
 #  - Enter prompt from pipe: echo "your prompt" | ./multirun.sh
 #                            echo "summarize this file: $(cat filename)" | ./multirun.sh
 #
-# Requires: ollama, bash, expect, awk, sed, tr, wc
+# Requires: ollama, bash, expect, awk, sed, tr, uname, wc
 
 NAME="ollama multirun"
-VERSION="2.3"
+VERSION="2.4"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -224,8 +224,11 @@ function finishIndexFile {
     echo "</table>"
     echo
     echo "<pre>"
-    echo "processor:      $ollamaProcessor"
+    echo "processing:     $ollamaProcessor"
     echo "ollama version: $ollamaVersion"
+    echo "sys arch:       $systemArch"
+    echo "sys processor:  $systemProcessor"
+    echo "sys OS:         $systemOSName $systemOSVersion"
     echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
     echo "$FOOTER"
   } >> "$indexFile"
@@ -251,21 +254,24 @@ function createModelFile {
         echo "<pre>"
         echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
         echo "model size:     $ollamaSize"
-        echo "processor:      $ollamaProcessor"
+        echo "processing:     $ollamaProcessor"
         echo "ollama version: $ollamaVersion"
+        echo "sys arch:       $systemArch"
+        echo "sys processor:  $systemProcessor"
+        echo "sys OS:         $systemOSName $systemOSVersion"
         echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
         echo "$FOOTER"
       } > "$modelHtmlFile"
 }
 
-function getStats {
+function setStats {
     stats="$(cat "$statsFile")" # get content of stats file
     stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
     stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
     echo "$stats" > "$statsFile" # save cleaned stats
 }
 
-function getOllamaStats {
+function setOllamaStats {
   ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6}' | sed '1d') # Get the first 6 columns of ollama ps output, skipping the header
   ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
   ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
@@ -273,10 +279,18 @@ function getOllamaStats {
   ollamaVersion=$(ollama -v | awk '{print $4}')
 }
 
+function setSystemStats {
+  systemArch=$(uname -m) # Get hardware platform
+  systemProcessor=$(uname -p) # Get system processor
+  systemOSName=$(uname -s) # Get system OS name
+  systemOSVersion=$(uname -r) # Get system OS version
+}
+
 setModels
 setPrompt
 createResultsDirectory
 savePrompt
+setSystemStats
 setHeaderAndFooter
 createResultsIndexFile
 createIndexFile
@@ -289,9 +303,9 @@ for model in $models; do
     echo "Creating: $modelFile"
     echo "Creating: $statsFile"
     ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
-    getOllamaStats
+    setOllamaStats
+    setStats
     clear_model "$model"
-    getStats
     createModelFile
     addModelToIndexFile
 done
