@@ -50,11 +50,14 @@ Before running `ollama multirun`, ensure you have the following installed:
     git clone https://github.com/attogram/ollama-multirun.git
     cd ollama-multirun
     ```
-2.  **Make Executable:**
+
+    or just copy the latest version from: https://raw.githubusercontent.com/attogram/ollama-multirun/refs/heads/main/multirun.sh
+    
+3.  **Make Executable:**
     ```bash
     chmod +x multirun.sh
     ```
-3.  **Pull Some Ollama Models:** If you don't have any models yet, you'll need to download them:
+4.  **Pull Some Ollama Models:** If you don't have any models yet, you'll need to download them:
     ```bash
     ollama pull llama2
     ollama pull mistral
