@@ -13,7 +13,7 @@
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="2.1"
+VERSION="2.2"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -171,7 +171,7 @@ function createResultsIndexFile {
       fi
     done
     echo "</ul>"
-    echo "<br /><br /><p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo "<br /><br /><p>page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
     echo "$FOOTER"
   } > $resultsIndexFile
 }
@@ -222,7 +222,10 @@ function addModelToIndexFile {
 function finishIndexFile {
   {
     echo "</table>"
-    echo "<br /><br /><p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo
+    echo "<pre>processor:      $ollamaProcessor"
+    echo "ollama version: $ollamaVersion"
+    echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
     echo "$FOOTER"
   } >> "$indexFile"
 }
@@ -251,10 +254,23 @@ function createModelFile {
         echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
         textarea "$stats" 0 10 # 0 padding, max 10 lines
         echo "</p>"
-        echo "<p>ollama Model Info: <a target='ollama' href='https://ollama.com/library/${model}'>$model</a></p>"
-        echo "<p>Created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+        getOllamaStats
+        echo "<pre>page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
         echo "$FOOTER"
       } > "$modelHtmlFile"
+}
+
+function getOllamaStats {
+  ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6}' | sed '1d') # Get the first 6 columns of ollama ps output, skipping the header
+  ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
+  ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
+  ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
+  ollamaVersion=$(ollama -v | awk '{print $4}')
+  echo
+  echo "<pre>model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
+  echo "model size:     $ollamaSize"
+  echo "processor:      $ollamaProcessor"
+  echo "ollama version: $ollamaVersion</pre>"
 }
 
 setModels
