@@ -10,7 +10,7 @@ Perfect for:
 
 Demo: https://attogram.github.io/ai_test_zone/
 
-Repo: https://github.com/attagram/ollama-multirun
+Repo: https://github.com/attogram/ollama-multirun
 
 ## ✨ Features
 
@@ -47,7 +47,7 @@ Before running `ollama multirun`, ensure you have the following installed:
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/attagram/ollama-multirun.git
+    git clone https://github.com/attogram/ollama-multirun.git
     cd ollama-multirun
     ```
 2.  **Make Executable:**
