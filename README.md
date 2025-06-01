@@ -10,7 +10,6 @@ Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
 
-## Screenshots
 
 Run results:
 ![Screenshot of the run page](docs/run.page.png)
