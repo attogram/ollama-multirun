@@ -13,7 +13,7 @@
 # Requires: ollama, bash, expect, awk, sed, tr, uname, wc
 
 NAME="ollama multirun"
-VERSION="2.5"
+VERSION="2.6"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -224,7 +224,7 @@ function finishIndexFile {
     echo "</table>"
     echo
     echo "<pre>"
-    echo "processing:     $ollamaProcessor"
+    echo "ollama proc:    $ollamaProcessor"
     echo "ollama version: $ollamaVersion"
     echo "sys arch:       $systemArch"
     echo "sys processor:  $systemProcessor"
@@ -255,7 +255,12 @@ function createModelFile {
         echo "<pre>"
         echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
         echo "model size:     $ollamaSize"
-        echo "processing:     $ollamaProcessor"
+        echo "model arch:     $modelArchitecture"
+        echo "model params:   $modelParameters"
+        echo "model context:  $modelContextLength"
+        echo "model embed:    $modelEmbeddingLength"
+        echo "model quant:    $modelQuantization"
+        echo "ollama proc:    $ollamaProcessor"
         echo "ollama version: $ollamaVersion"
         echo "sys arch:       $systemArch"
         echo "sys processor:  $systemProcessor"
@@ -291,6 +296,15 @@ function setSystemStats {
   systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
 }
 
+function setModelInfo {
+  modelInfo=$(ollama show "$model")
+  modelArchitecture=$(echo "$modelInfo" | awk '/architecture/ {print $2}') # Get model architecture
+  modelParameters=$(echo "$modelInfo" | awk '/parameters/ {print $2}') # Get model parameters
+  modelContextLength=$(echo "$modelInfo" | awk '/context length/ {print $3}') # Get model context length
+  modelEmbeddingLength=$(echo "$modelInfo" | awk '/embedding length/ {print $3}') # Get model embedding length
+  modelQuantization=$(echo "$modelInfo" | awk '/quantization/ {print $2}') # Get model quantization
+}
+
 setModels
 setPrompt
 createResultsDirectory
@@ -308,6 +322,7 @@ for model in $models; do
     echo "Creating: $modelFile"
     echo "Creating: $statsFile"
     ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
+    setModelInfo
     setOllamaStats
     setStats
     clear_model "$model"
