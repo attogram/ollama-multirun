@@ -13,7 +13,7 @@
 # Requires: ollama, bash, expect, awk, sed, tr, uname, wc
 
 NAME="ollama multirun"
-VERSION="2.4"
+VERSION="2.5"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -228,6 +228,7 @@ function finishIndexFile {
     echo "ollama version: $ollamaVersion"
     echo "sys arch:       $systemArch"
     echo "sys processor:  $systemProcessor"
+    echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
     echo "sys OS:         $systemOSName $systemOSVersion"
     echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
     echo "$FOOTER"
@@ -258,6 +259,7 @@ function createModelFile {
         echo "ollama version: $ollamaVersion"
         echo "sys arch:       $systemArch"
         echo "sys processor:  $systemProcessor"
+        echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
         echo "sys OS:         $systemOSName $systemOSVersion"
         echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
         echo "$FOOTER"
@@ -284,6 +286,9 @@ function setSystemStats {
   systemProcessor=$(uname -p) # Get system processor
   systemOSName=$(uname -s) # Get system OS name
   systemOSVersion=$(uname -r) # Get system OS version
+  top=$(top -l 1)
+  systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
+  systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
 }
 
 setModels
