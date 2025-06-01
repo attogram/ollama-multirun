@@ -10,7 +10,6 @@ Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
 
-
 Run results:
 ![Screenshot of the run page](docs/run.page.png)
 
@@ -98,13 +97,13 @@ Run the script from your terminal. The results will be saved in a new directory 
 
 ### After Running
 
-Once the script finishes, it will print the path to your newly created results directory (e.g., `results/your_prompt_tag_20240101-123456/`).
+Once the script finishes, it will print the path to your newly created results directory (e.g., `results/your_prompt_tag_20250601-123456/`).
 
 Navigate to this directory and open `index.html` in your web browser to view the generated report:
 
 ```bash
-xdg-open results/your_prompt_tag_20240101-123456/index.html # Linux
-open results/your_prompt_tag_20240101-123456/index.html     # macOS
+xdg-open results/your_prompt_tag_20250601-123456/index.html # Linux
+open results/your_prompt_tag_20250601-123456/index.html     # macOS
 # For Windows, manually navigate to the file in File Explorer and open with browser.
 ```
 
