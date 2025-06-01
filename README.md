@@ -1,7 +1,7 @@
 # ollama multirun
 
 A bash shell script to run a single prompt against *all* your locally installed ollama models,
-saving the output and performance statistics as easily navigable web pages. 
+saving the output and performance statistics as easily navigable web pages.
 
 Useful for comparing model responses, tracking performance
 and documenting your local AI experiments
@@ -34,9 +34,10 @@ Index page:
 * **Prompt Persistence:** Saves the original prompt as a plain text file (`prompt.txt`) and in GitHub's prompt YAML format (`.prompt.yaml`) for easy re-use and documentation.
 * **Clean Slate:** Automatically clears and stops Ollama models between runs for consistent results.
 * **Flexible Prompt Input:**
-    * Manual entry via the command line.
-    * From a file (e.g., `multirun.sh < prompt.txt`).
-    * From a pipe (e.g., `echo "my prompt" | multirun.sh`).
+    * Interactive prompt entry (default behavior) (e.g., `./multirun.sh`).
+    * From the command line (e.g., `./multirun.sh "my prompt"`).
+    * From a file (e.g., `./multirun.sh < prompt.txt`).
+    * From a pipe (e.g., `echo "my prompt" | ./multirun.sh`).
 * **Safe Naming:** Generates sanitized, timestamped directories for each run to keep your results organized.
 
 ## 🚀 Getting Started
@@ -59,12 +60,12 @@ Before running `ollama multirun`, ensure you have the following installed:
     ```
 
     or just copy the latest version from: https://raw.githubusercontent.com/attogram/ollama-multirun/refs/heads/main/multirun.sh
-    
-3.  **Make Executable:**
+
+2.  **Make Executable:**
     ```bash
     chmod +x multirun.sh
     ```
-4.  **Pull Some Ollama Models:** If you don't have any models yet, you'll need to download them:
+3.  **Pull Some Ollama Models:** If you don't have any models yet, you'll need to download them:
     ```bash
     ollama pull llama2
     ollama pull mistral
@@ -76,18 +77,25 @@ Before running `ollama multirun`, ensure you have the following installed:
 
 Run the script from your terminal. The results will be saved in a new directory inside the `results/` folder.
 
-1.  **Enter prompt manually (default):**
+1.  **Enter prompt interactively (default):**
     ```bash
     ./multirun.sh
     ```
-    *The script will prompt you to enter your text. Press `Enter` and then `Ctrl+D` (on Linux/macOS) or `Ctrl+Z` then `Enter` (on Windows Bash/WSL) to finish input.*
 
-2.  **Enter prompt from a file:**
+2.  **Enter prompt from the command line:**
+    ```bash
+    ./multirun.sh "Your prompt here"
+    ```
+    ```bash
+    ./multirun.sh "Summarize this document: $(cat document.txt)"
+    ```
+
+3.  **Enter prompt from a file:**
     ```bash
     ./multirun.sh < my_prompt.txt
     ```
 
-3.  **Enter prompt from a pipe:**
+4.  **Enter prompt from a pipe:**
     ```bash
     echo "Your prompt here" | ./multirun.sh
     ```
@@ -97,15 +105,10 @@ Run the script from your terminal. The results will be saved in a new directory 
 
 ### After Running
 
-Once the script finishes, it will print the path to your newly created results directory (e.g., `results/your_prompt_tag_20250601-123456/`).
+Once the script finishes, 
+it will print the path to your newly created results directory (e.g., `results/your_prompt_tag_20250601-123456/`).
 
-Navigate to this directory and open `index.html` in your web browser to view the generated report:
-
-```bash
-xdg-open results/your_prompt_tag_20250601-123456/index.html # Linux
-open results/your_prompt_tag_20250601-123456/index.html     # macOS
-# For Windows, manually navigate to the file in File Explorer and open with browser.
-```
+Navigate to this directory and open `index.html` in your web browser to view the generated reports
 
 ## 📂 Results Structure
 ```
@@ -127,15 +130,15 @@ ollama-multirun/
 ## 🛠️ Development & Contribution
 
 We welcome contributions! Whether it's a bug report, a feature suggestion, or a code change, your input is valuable.
- * Fork the repository.
- * Clone your forked repository: ```git clone https://github.com/YOUR_USERNAME/ollama-multirun.git```
- * ```cd ollama-multirun```
- * Create a new branch: ```git checkout -b feature/your-feature-name```
- * Make your changes.
- * Test your changes thoroughly.
- * Commit your changes: ```git commit -m "feat: Add a new feature (e.g., --output-json option)"```
- * Push to your branch: ```git push origin feature/your-feature-name```
- * Open a Pull Request on the original repository, detailing your changes.
+* Fork the repository.
+* Clone your forked repository: ```git clone https://github.com/YOUR_USERNAME/ollama-multirun.git```
+* ```cd ollama-multirun```
+* Create a new branch: ```git checkout -b feature/your-feature-name```
+* Make your changes.
+* Test your changes thoroughly.
+* Commit your changes: ```git commit -m "feat: Add a new feature (e.g., --output-json option)"```
+* Push to your branch: ```git push origin feature/your-feature-name```
+* Open a Pull Request on the original repository, detailing your changes.
 
 ## Reporting Issues
 If you encounter any bugs or have feature requests, please open an issue on the GitHub Issues page.
@@ -144,5 +147,5 @@ If you encounter any bugs or have feature requests, please open an issue on the 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgements
- * Ollama for making local LLMs accessible.
- * The open-source community for inspiration and tools.
+* Ollama for making local LLMs accessible.
+* The open-source community for inspiration and tools.
