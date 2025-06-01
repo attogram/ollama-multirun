@@ -13,7 +13,7 @@
 # Requires: ollama, bash, expect, awk, sed, tr, wc
 
 NAME="ollama multirun"
-VERSION="2.2"
+VERSION="2.3"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -223,18 +223,12 @@ function finishIndexFile {
   {
     echo "</table>"
     echo
-    echo "<pre>processor:      $ollamaProcessor"
+    echo "<pre>"
+    echo "processor:      $ollamaProcessor"
     echo "ollama version: $ollamaVersion"
     echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
     echo "$FOOTER"
   } >> "$indexFile"
-}
-
-function getStats {
-    stats="$(cat "$statsFile")" # get content of stats file
-    stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
-    stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
-    echo "$stats" > "$statsFile" # save cleaned stats
 }
 
 function createModelFile {
@@ -254,10 +248,21 @@ function createModelFile {
         echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
         textarea "$stats" 0 10 # 0 padding, max 10 lines
         echo "</p>"
-        getOllamaStats
-        echo "<pre>page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
+        echo "<pre>"
+        echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
+        echo "model size:     $ollamaSize"
+        echo "processor:      $ollamaProcessor"
+        echo "ollama version: $ollamaVersion"
+        echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
         echo "$FOOTER"
       } > "$modelHtmlFile"
+}
+
+function getStats {
+    stats="$(cat "$statsFile")" # get content of stats file
+    stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
+    stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
+    echo "$stats" > "$statsFile" # save cleaned stats
 }
 
 function getOllamaStats {
@@ -266,11 +271,6 @@ function getOllamaStats {
   ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
   ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
   ollamaVersion=$(ollama -v | awk '{print $4}')
-  echo
-  echo "<pre>model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
-  echo "model size:     $ollamaSize"
-  echo "processor:      $ollamaProcessor"
-  echo "ollama version: $ollamaVersion</pre>"
 }
 
 setModels
@@ -289,6 +289,7 @@ for model in $models; do
     echo "Creating: $modelFile"
     echo "Creating: $statsFile"
     ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
+    getOllamaStats
     clear_model "$model"
     getStats
     createModelFile
