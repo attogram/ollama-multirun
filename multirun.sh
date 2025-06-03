@@ -14,7 +14,7 @@
 # Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="2.8"
+VERSION="2.9"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -31,7 +31,8 @@ function setModels {
 
 function createResultsDirectory {
   tag=$(safeTag "$prompt")
-  directory="${RESULTS_DIRECTORY}/${tag}_$(date '+%Y%m%d-%H%M%S')"
+  tagDatetime=$(date '+%Y%m%d-%H%M%S')
+  directory="${RESULTS_DIRECTORY}/${tag}_${tagDatetime}"
   echo; echo "Creating: $directory/"
   mkdir -p "$directory"
 }
@@ -188,7 +189,7 @@ function createIndexFile {
   echo "Creating: $indexFile"
   {
     echo "$HEADER<title>$NAME: $tag</title></head><body>"
-    echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b><br /><br />"
+    echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime<br /><br />"
     createMenu "index"
     echo  "</header>"
     showPrompt
@@ -249,7 +250,7 @@ function createModelFile {
   resultsBytes=$(wc -c < "$modelFile" | awk '{print $1}')
   {
     echo "$HEADER<title>$NAME: $model</title></head><body>"
-    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
+    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime<br /><br />"
     createMenu "$model"
     echo "</header>"
     showPrompt
@@ -260,6 +261,7 @@ function createModelFile {
     textarea "$stats" 0 10 # 0 padding, max 10 lines
     echo "</p>"
     echo "<pre>"
+    echo "Model:"
     echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
     echo "model arch:     $modelArchitecture"
     echo "model size:     $ollamaSize"
@@ -267,12 +269,15 @@ function createModelFile {
     echo "model context:  $modelContextLength"
     echo "model embed:    $modelEmbeddingLength"
     echo "model quant:    $modelQuantization"
+    echo
+    echo "System:"
     echo "ollama proc:    $ollamaProcessor"
     echo "ollama version: $ollamaVersion"
     echo "sys arch:       $systemArch"
     echo "sys processor:  $systemProcessor"
     echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
     echo "sys OS:         $systemOSName $systemOSVersion"
+    echo
     echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
     echo "$FOOTER"
   } > "$modelHtmlFile"
@@ -283,7 +288,7 @@ function createModelsIndexFile {
   echo "Creating: $modelsIndexFile"
   {
     echo "$HEADER<title>$NAME: models</title></head><body>"
-    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b></header>"
+    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime</header>"
     cat <<- "EOF"
 <br />
 <table>
