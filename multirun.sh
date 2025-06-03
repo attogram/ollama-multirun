@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ollama multirun
+# ollama-multirun
 #
 # Bash shell script to run a prompt against all models in ollama, and save the output as web pages
 #
@@ -13,8 +13,8 @@
 #
 # Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
 
-NAME="ollama multirun"
-VERSION="2.7"
+NAME="ollama-multirun"
+VERSION="2.8"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -153,7 +153,8 @@ EOF
 
 function createMenu {
   local currentModel="$1"
-  echo "<span class='menu'>models: "
+  echo "<span class='menu'>"
+  echo "<a href='models.html'>models</a>: "
   for modelName in $models; do
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b> "
@@ -242,39 +243,83 @@ function finishIndexFile {
 }
 
 function createModelFile {
-      modelHtmlFile="$directory/$model.html"
-      echo "Creating: $modelHtmlFile"
-      resultsWords=$(wc -w < "$modelFile" | awk '{print $1}')
-      resultsBytes=$(wc -c < "$modelFile" | awk '{print $1}')
-      {
-        echo "$HEADER<title>$NAME: $model</title></head><body>"
-        echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
-        createMenu "$model"
-        echo "</header>"
-        showPrompt
-        echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)  words:$resultsWords  bytes:$resultsBytes<br />"
-        textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
-        echo "</p>"
-        echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
-        textarea "$stats" 0 10 # 0 padding, max 10 lines
-        echo "</p>"
-        echo "<pre>"
-        echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
-        echo "model size:     $ollamaSize"
-        echo "model arch:     $modelArchitecture"
-        echo "model params:   $modelParameters"
-        echo "model context:  $modelContextLength"
-        echo "model embed:    $modelEmbeddingLength"
-        echo "model quant:    $modelQuantization"
-        echo "ollama proc:    $ollamaProcessor"
-        echo "ollama version: $ollamaVersion"
-        echo "sys arch:       $systemArch"
-        echo "sys processor:  $systemProcessor"
-        echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
-        echo "sys OS:         $systemOSName $systemOSVersion"
-        echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
-        echo "$FOOTER"
-      } > "$modelHtmlFile"
+  modelHtmlFile="$directory/$model.html"
+  echo "Creating: $modelHtmlFile"
+  resultsWords=$(wc -w < "$modelFile" | awk '{print $1}')
+  resultsBytes=$(wc -c < "$modelFile" | awk '{print $1}')
+  {
+    echo "$HEADER<title>$NAME: $model</title></head><body>"
+    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b><br /><br />"
+    createMenu "$model"
+    echo "</header>"
+    showPrompt
+    echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)  words:$resultsWords  bytes:$resultsBytes<br />"
+    textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
+    echo "</p>"
+    echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
+    textarea "$stats" 0 10 # 0 padding, max 10 lines
+    echo "</p>"
+    echo "<pre>"
+    echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
+    echo "model arch:     $modelArchitecture"
+    echo "model size:     $ollamaSize"
+    echo "model params:   $modelParameters"
+    echo "model context:  $modelContextLength"
+    echo "model embed:    $modelEmbeddingLength"
+    echo "model quant:    $modelQuantization"
+    echo "ollama proc:    $ollamaProcessor"
+    echo "ollama version: $ollamaVersion"
+    echo "sys arch:       $systemArch"
+    echo "sys processor:  $systemProcessor"
+    echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
+    echo "sys OS:         $systemOSName $systemOSVersion"
+    echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
+    echo "$FOOTER"
+  } > "$modelHtmlFile"
+}
+
+function createModelsIndexFile {
+  modelsIndexFile="$directory/models.html"
+  echo "Creating: $modelsIndexFile"
+  {
+    echo "$HEADER<title>$NAME: models</title></head><body>"
+    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b></header>"
+    cat <<- "EOF"
+<br />
+<table>
+  <tr>
+    <th class='left'>model</th>
+    <th>architecture</th>
+    <th>size</th>
+    <th>parameters</th>
+    <th>context<br />length</th>
+    <th>embedding<br />length</th>
+    <th>quantization</th>
+  </tr>
+EOF
+  } > "$modelsIndexFile"
+}
+
+function addModelToModelsIndexFile {
+  {
+    echo "<tr>"
+    echo "<td class='left'><a href='./$model.html'>$model</a></td>"
+    echo "<td>$modelArchitecture</td>"
+    echo "<td>$ollamaSize</td>"
+    echo "<td>$modelParameters</td>"
+    echo "<td>$modelContextLength</td>"
+    echo "<td>$modelEmbeddingLength</td>"
+    echo "<td>$modelQuantization</td>"
+    echo "</tr>"
+  } >> "$modelsIndexFile"
+}
+
+function finishModelsIndexFile {
+  {
+    echo "</table>"
+    echo "<br /><br /><p>page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo "$FOOTER"
+  } >> "$modelsIndexFile"
 }
 
 function setStats {
@@ -319,6 +364,7 @@ setSystemStats
 setHeaderAndFooter
 createResultsIndexFile
 createIndexFile
+createModelsIndexFile
 
 # Loop through each model and run it with the given prompt
 for model in $models; do
@@ -334,8 +380,11 @@ for model in $models; do
     clear_model "$model"
     createModelFile
     addModelToIndexFile
+    addModelToModelsIndexFile
 done
 
+finishModelsIndexFile
 finishIndexFile
 
 echo; echo "Done: $directory/"
+
