@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.0"
+VERSION="3.1"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -94,9 +94,10 @@ function createResultsDirectory {
 }
 
 function setPrompt {
-  if [ "${BASH_ARGV[0]}" ]; then
-      prompt="${BASH_ARGV[0]}" # Use the first argument as the prompt
-      return
+
+  # if prompt is already set from command line
+  if [ -n "$prompt" ]; then
+    return
   fi
 
   if [ -t 0 ]; then # Check if input is from a terminal (interactive)
