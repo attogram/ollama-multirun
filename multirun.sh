@@ -11,22 +11,78 @@
 #  - Enter prompt from pipe:   echo "your prompt" | ./multirun.sh
 #                              echo "summarize this file: $(cat filename)" | ./multirun.sh
 #
+#  - By default, will use all available models
+#    To set a list of models to use, set as a comma-seperated list with -m
+#      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
+#
 # Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="2.9"
+VERSION="3.0"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
 echo; echo "$NAME v$VERSION"; echo
 
+function parseCommandLine {
+  modelsList=""
+  prompt=""
+  while (( "$#" )); do
+    case "$1" in
+      -m)
+        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+          modelsList=$2
+          shift 2
+        else
+          echo "Error: Argument for $1 is missing" >&2
+          break
+        fi
+        ;;
+      -*|--*=) # unsupported flags
+        shift 2
+        ;;
+      *) # preserve positional arguments
+        prompt="$prompt $1"
+        shift
+        ;;
+    esac
+  done
+  # set positional arguments in their proper place
+  eval set -- "$prompt"
+}
+
 function setModels {
+
   models=$(ollama list | awk '{if (NR > 1) print $1}' | sort) # Get list of models, sorted alphabetically
-  echo "Models:"; echo "$models"; echo
+
   if [ -z "$models" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'"
     exit 1
   fi
+
+  newModels=()
+
+  if [ -n "$modelsList" ]; then
+    IFS=',' read -ra modelsListArray <<< "$modelsList" # parse csv into modelsListArray
+    for m in "${modelsListArray[@]}"; do
+      if [[ "${models[*]}" =~ "$m" ]]; then # if model exists
+        newModels+=("$m")
+      else
+        echo "Error: model not found: $m"
+        exit
+      fi
+    done
+  fi
+
+  if [ -n "$newModels" ]; then
+    models=("${newModels[@]}")
+  fi
+
+  echo "Models:";
+  for m in "${models[@]}"; do
+    echo "$m"
+  done
+  echo
 }
 
 function createResultsDirectory {
@@ -156,7 +212,7 @@ function createMenu {
   local currentModel="$1"
   echo "<span class='menu'>"
   echo "<a href='models.html'>models</a>: "
-  for modelName in $models; do
+  for modelName in ${models[@]}; do
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b> "
     else
@@ -361,6 +417,7 @@ function setModelInfo {
   modelQuantization=$(echo "$modelInfo" | awk '/quantization/ {print $2}') # Get model quantization
 }
 
+parseCommandLine "$@"
 setModels
 setPrompt
 createResultsDirectory
@@ -372,7 +429,7 @@ createIndexFile
 createModelsIndexFile
 
 # Loop through each model and run it with the given prompt
-for model in $models; do
+for model in "${models[@]}"; do
     echo; echo "Running model: $model"
     modelFile="$directory/$model.txt"
     statsFile="$directory/$model.stats.txt"
@@ -392,4 +449,3 @@ finishModelsIndexFile
 finishIndexFile
 
 echo; echo "Done: $directory/"
-
