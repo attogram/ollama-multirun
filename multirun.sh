@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, grep, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.3"
+VERSION="3.4"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -130,21 +130,23 @@ function savePrompt {
 }
 
 function showPrompt {
-    promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
-    promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
-    echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
-    echo "  words:$promptWords  bytes:$promptBytes<br />"
-    textarea "$prompt" 0 10 # 0 padding, max 10 lines
-    echo "</p>"
+  promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
+  promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
+  echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
+  echo "  words:$promptWords  bytes:$promptBytes<br />"
+  textarea "$prompt" 0 10 # 0 padding, max 10 lines
+  echo "</p>"
+}
 
-    if [ -n "$addedImages" ]; then
-      for image in ${addedImages}; do
-        echo "<div class='box'>"
-        echo "<a target='image' href='$(basename $image)'><img src='$(basename $image)' alt='$image' width='250' /></a>"
-        echo "</div>"
-      done
-      echo "<br />"
-    fi
+function showImages {
+  if [ -n "$addedImages" ]; then
+    for image in ${addedImages}; do
+      echo -n "<div class='box'>"
+      echo -n "<a target='image' href='$(basename $image)'><img src='$(basename $image)' alt='$image' width='250' /></a>"
+      echo -n "</div>"
+    done
+    echo -n "<br />"
+  fi
 }
 
 function textarea() {
@@ -262,6 +264,7 @@ function createIndexFile {
     createMenu "index"
     echo  "</header>"
     showPrompt
+    echo "<!-- IMAGES -->"
     cat <<- "EOF"
 <table>
   <tr>
@@ -315,6 +318,9 @@ function finishIndexFile {
     echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
     echo "$FOOTER"
   } >> "$indexFile"
+
+    imagesHtml=$(showImages)
+    sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $indexFile
 }
 
 function createModelFile {
@@ -326,6 +332,7 @@ function createModelFile {
     createMenu "$model"
     echo "</header>"
     showPrompt
+    showImages
     echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
     textarea "$(cat "$modelFile")" 3 25 # 5 padding, max 30 lines
     echo "</p>"
