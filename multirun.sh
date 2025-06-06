@@ -15,10 +15,10 @@
 #    To set a list of models to use, set as a comma-seperated list with -m
 #      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
-# Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
+# Requires: ollama, bash, expect, awk, basename, grep, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.2"
+VERSION="3.3"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -136,6 +136,15 @@ function showPrompt {
     echo "  words:$promptWords  bytes:$promptBytes<br />"
     textarea "$prompt" 0 10 # 0 padding, max 10 lines
     echo "</p>"
+
+    if [ -n "$addedImages" ]; then
+      for image in ${addedImages}; do
+        echo "<div class='box'>"
+        echo "<a target='image' href='$(basename $image)'><img src='$(basename $image)' alt='$image' width='250' /></a>"
+        echo "</div>"
+      done
+      echo "<br />"
+    fi
 }
 
 function textarea() {
@@ -414,6 +423,16 @@ function setStats {
   statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
   statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
   statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
+
+  addedImages=$(grep -oE "Added image '(.*)'" "$statsFile" | awk '{ print $NF }' | sed "s/'//g")
+  if [ -n "$addedImages" ]; then
+    for image in ${addedImages}; do
+      if ! [ -f "$directory"/"$(basename $image)" ]; then
+        echo "Copying image: $image"
+        cp $image $directory
+      fi
+    done
+  fi
 
   responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
   responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
