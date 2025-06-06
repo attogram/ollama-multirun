@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.1"
+VERSION="3.2"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -190,14 +190,17 @@ function setHeaderAndFooter {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
+  a:hover { background-color: yellow; color: black; }
   body { font-family: monospace; }
-  textarea { border: 1px solid #cccccc; white-space: pre-wrap; width: 90%; }
   header, footer { background-color: #f0f0f0; padding: 10px; }
-  .menu { font-size: small; }
+  li { margin: 5px; }
   table, td, th { border-collapse: collapse; }
   td, th { border: 1px solid #cccccc; padding: 5px; text-align: right; }
+  tr:hover { background-color: lightyellow; color: black; }
+  textarea { border: 1px solid #cccccc; white-space: pre-wrap; width: 90%; }
+  .box { display: inline-block; margin: 3px; padding: 2px; vertical-align: top; }
   .left { text-align: left; }
-  li { margin: 5px; }
+  .menu { font-size: small; }
 </style>
 EOF
   )
@@ -270,16 +273,19 @@ EOF
 }
 
 function addModelToIndexFile {
-    responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
-    responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
     (
-        echo "<tr><td class='left'><a href='./$model.html'>$model</a></td><td >$responseWords</td><td>$responseBytes</td>"
-        while read -r line; do
-          value=$(echo "$line" | cut -d ':' -f2) # parse the stats file per line, splitting on : character, getting the second part as the value
-          if [[ -n "$value" ]]; then
-            echo "<td>${value}</td>";
-          fi
-        done < "$statsFile"
+        echo "<tr>"
+        echo "<td class='left'><a href='./$model.html'>$model</a></td>"
+        echo "<td>$responseWords</td>"
+        echo "<td>$responseBytes</td>"
+        echo "<td>$statsTotalDuration</td>"
+        echo "<td>$statsLoadDuration</td>"
+        echo "<td>$statsPromptEvalCount</td>"
+        echo "<td>$statsPromptEvalDuration</td>"
+        echo "<td>$statsPromptEvalRate</td>"
+        echo "<td>$statsEvalCount</td>"
+        echo "<td>$statsEvalDuration</td>"
+        echo "<td>$statsEvalRate</td>"
         echo "</tr>"
     ) >> "$indexFile"
 }
@@ -287,15 +293,17 @@ function addModelToIndexFile {
 function finishIndexFile {
   {
     echo "</table>"
-    echo
-    echo "<pre>"
-    echo "ollama proc:    $ollamaProcessor"
-    echo "ollama version: $ollamaVersion"
-    echo "sys arch:       $systemArch"
-    echo "sys processor:  $systemProcessor"
-    echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
-    echo "sys OS:         $systemOSName $systemOSVersion"
-    echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
+    echo "<br /><br />"
+    echo "<table>"
+    echo "<tr><td class='left' colspan='2'>System</td></tr>"
+    echo "<tr><td class='left'>ollama proc</td><td>$ollamaProcessor</td></tr>"
+    echo "<tr><td class='left'>ollama version</td><td>$ollamaVersion</td></tr>"
+    echo "<tr><td class='left'>sys arch</td><td>$systemArch</td></tr>"
+    echo "<tr><td class='left'>sys processor</td><td>$systemProcessor</td></tr>"
+    echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
+    echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
+    echo "</table>"
+    echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
     echo "$FOOTER"
   } >> "$indexFile"
 }
@@ -303,39 +311,52 @@ function finishIndexFile {
 function createModelFile {
   modelHtmlFile="$directory/$model.html"
   echo "Creating: $modelHtmlFile"
-  resultsWords=$(wc -w < "$modelFile" | awk '{print $1}')
-  resultsBytes=$(wc -c < "$modelFile" | awk '{print $1}')
   {
     echo "$HEADER<title>$NAME: $model</title></head><body>"
     echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime<br /><br />"
     createMenu "$model"
     echo "</header>"
     showPrompt
-    echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)  words:$resultsWords  bytes:$resultsBytes<br />"
-    textarea "$(cat "$modelFile")" 5 30 # 5 padding, max 30 lines
+    echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
+    textarea "$(cat "$modelFile")" 3 25 # 5 padding, max 30 lines
     echo "</p>"
-    echo "<p>Stats: $model (<a href='./$model.stats.txt'>raw</a>)<br />"
-    textarea "$stats" 0 10 # 0 padding, max 10 lines
-    echo "</p>"
-    echo "<pre>"
-    echo "Model:"
-    echo "model name:     <a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a>"
-    echo "model arch:     $modelArchitecture"
-    echo "model size:     $ollamaSize"
-    echo "model params:   $modelParameters"
-    echo "model context:  $modelContextLength"
-    echo "model embed:    $modelEmbeddingLength"
-    echo "model quant:    $modelQuantization"
-    echo
-    echo "System:"
-    echo "ollama proc:    $ollamaProcessor"
-    echo "ollama version: $ollamaVersion"
-    echo "sys arch:       $systemArch"
-    echo "sys processor:  $systemProcessor"
-    echo "sys memory:     $systemMemoryUsed + $systemMemoryAvail"
-    echo "sys OS:         $systemOSName $systemOSVersion"
-    echo
-    echo "page created:   $(date '+%Y-%m-%d %H:%M:%S')</pre>"
+
+    echo "<div class='box'><table>"
+    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$model.stats.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left'>words</td><td>$responseWords</td></tr>"
+    echo "<tr><td class='left'>bytes</td><td>$responseBytes</td></tr>"
+    echo "<tr><td class='left'>total duration</td><td>$statsTotalDuration</td></tr>"
+    echo "<tr><td class='left'>load duration</td><td>$statsLoadDuration</td></tr>"
+    echo "<tr><td class='left'>prompt eval count</td><td>$statsPromptEvalCount</td></tr>"
+    echo "<tr><td class='left'>prompt eval duration</td><td>$statsPromptEvalDuration</td></tr>"
+    echo "<tr><td class='left'>prompt eval rate</td><td>$statsPromptEvalRate</td></tr>"
+    echo "<tr><td class='left'>eval count</td><td>$statsEvalCount</td></tr>"
+    echo "<tr><td class='left'>eval duration</td><td>$statsEvalDuration</td></tr>"
+    echo "<tr><td class='left'>eval rate</td><td>$statsEvalRate</td></tr>"
+    echo "</table></div>"
+
+    echo "<div class='box'><table>"
+    echo "<tr><td class='left' colspan='2'>Model</td></tr>"
+    echo "<tr><td class='left'>name</td><td><a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a></td></tr>"
+    echo "<tr><td class='left'>architecture</td><td>$modelArchitecture</td></tr>"
+    echo "<tr><td class='left'>size</td><td>$ollamaSize</td></tr>"
+    echo "<tr><td class='left'>parameters</td><td>$modelParameters</td></tr>"
+    echo "<tr><td class='left'>context length</td><td>$modelContextLength</td></tr>"
+    echo "<tr><td class='left'>embedding length</td><td>$modelEmbeddingLength</td></tr>"
+    echo "<tr><td class='left'>quantization</td><td>$modelQuantization</td></tr>"
+    echo "</table></div>"
+
+    echo "<div class='box'><table>"
+    echo "<tr><td class='left' colspan='2'>System</td></tr>"
+    echo "<tr><td class='left'>ollama proc</td><td>$ollamaProcessor</td></tr>"
+    echo "<tr><td class='left'>ollama version</td><td>$ollamaVersion</td></tr>"
+    echo "<tr><td class='left'>sys arch</td><td>$systemArch</td></tr>"
+    echo "<tr><td class='left'>sys processor</td><td>$systemProcessor</td></tr>"
+    echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
+    echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
+    echo "</table></div>"
+
+    echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
     echo "$FOOTER"
   } > "$modelHtmlFile"
 }
@@ -385,10 +406,17 @@ function finishModelsIndexFile {
 }
 
 function setStats {
-    stats="$(cat "$statsFile")" # get content of stats file
-    stats="total${stats#*total}" # remove everything before the first occurrence of word 'total'
-    stats=${stats%%"$(tail -n1 <<<"$stats")"} # remove the last line
-    echo "$stats" > "$statsFile" # save cleaned stats
+  statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
+  statsPromptEvalDuration=$(grep -oE "prompt eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsPromptEvalRate=$(grep -oE "prompt eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
+  statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
+  statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
+
+  responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
+  responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
 }
 
 function setOllamaStats {
