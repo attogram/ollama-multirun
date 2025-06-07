@@ -1,6 +1,6 @@
 # ollama multirun
 
-A bash shell script to run a single prompt against *all* your locally installed ollama models,
+A bash shell script to run a single prompt against any or all of your locally installed ollama models,
 saving the output and performance statistics as easily navigable web pages.
 
 Useful for comparing model responses, tracking performance
