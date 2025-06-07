@@ -124,6 +124,7 @@ ollama-multirun/
         ├── model1.html     # HTML page for model1's output and stats
         ├── model1.txt      # Raw text output from model1
         ├── model1.stats.txt# Raw stats from model1
+        ├── model1.info.txt # Raw info from model1
         ├── model2.html     # ... and so on for each model
         └── ...
 ```
