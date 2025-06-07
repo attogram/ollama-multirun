@@ -15,10 +15,10 @@
 #    To set a list of models to use, set as a comma-seperated list with -m
 #      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
-# Requires: ollama, bash, expect, awk, basename, grep, sed, top, tr, uname, wc
+# Requires: ollama, bash, expect, awk, basename, grep, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.7"
+VERSION="3.8"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -61,6 +61,8 @@ function setModels {
 
   parsedModels=()
   if [ -n "$modelsList" ]; then
+    modelsList=$(for each in ${modelsList[@]}; do echo $each; done | sort)
+
     IFS=',' read -ra modelsListArray <<< "$modelsList" # parse csv into modelsListArray
     for m in "${modelsListArray[@]}"; do
       if [[ "${models[*]}" =~ "$m" ]]; then # if model exists
@@ -103,7 +105,7 @@ function setPrompt {
 }
 
 function savePrompt {
-  echo; echo "Prompt: $prompt"
+  echo; echo "Prompt: $prompt"; echo
   promptFile="$directory/prompt.txt"
   echo "Creating: $promptFile"
   echo "$prompt" > "$promptFile"
@@ -187,7 +189,7 @@ function clear_model {
   ollama stop "$1"
 }
 
-function setHeaderAndFooter {
+function setHeader {
   HEADER=$(cat <<EOF
 <!DOCTYPE html>
 <html lang="en">
@@ -210,11 +212,14 @@ function setHeaderAndFooter {
 EOF
   )
 
-  FOOTER=$(cat <<EOF
-<footer><p>Generated with <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p></footer>
-</body></html>
-EOF
-  )
+}
+
+function showFooter {
+  echo "<br /><br />"
+  echo "<footer>"
+  echo "<p>page created:   $(date '+%Y-%m-%d %H:%M:%S')</p>"
+  echo "<p>Generated with: <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p>"
+  echo "</footer></body></html>"
 }
 
 function createMenu {
@@ -391,8 +396,7 @@ EOF
 
   {
     echo "</table>"
-    echo "<br /><br /><p>page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
-    echo "$FOOTER"
+    showFooter
   } >> "$modelsIndexFile"
 }
 
@@ -446,8 +450,7 @@ function createModelFile {
     echo "<tr><td class='left'>sys OS</td><td class='left'>$systemOSName $systemOSVersion</td></tr>"
     echo "</table></div>"
 
-    echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "$FOOTER"
+    showFooter
   } > "$modelHtmlFile"
 }
 
@@ -464,8 +467,7 @@ function createResultsIndexFile {
       fi
     done
     echo "</ul>"
-    echo "<br /><br /><p>page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
-    echo "$FOOTER"
+    showFooter
   } > $resultsIndexFile
 }
 
@@ -529,8 +531,7 @@ function finishIndexFile {
     echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
     echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
     echo "</table>"
-    echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "$FOOTER"
+    showFooter
   } >> "$indexFile"
 
     imagesHtml=$(showImages)
@@ -543,7 +544,7 @@ setPrompt
 createResultsDirectory
 savePrompt
 setSystemStats
-setHeaderAndFooter
+setHeader
 createResultsIndexFile
 createIndexFile
 saveModelInfo
