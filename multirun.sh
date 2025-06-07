@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, grep, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.5"
+VERSION="3.6"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -53,29 +53,26 @@ function parseCommandLine {
 
 function setModels {
 
-   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
-
-
-
+  models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
   if [ -z "$models" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'"
     exit 1
   fi
 
-  newModels=()
+  parsedModels=()
   if [ -n "$modelsList" ]; then
     IFS=',' read -ra modelsListArray <<< "$modelsList" # parse csv into modelsListArray
     for m in "${modelsListArray[@]}"; do
       if [[ "${models[*]}" =~ "$m" ]]; then # if model exists
-        newModels+=("$m")
+        parsedModels+=("$m")
       else
         echo "Error: model not found: $m"
         exit
       fi
     done
   fi
-  if [ -n "$newModels" ]; then
-    models=("${newModels[@]}")
+  if [ -n "$parsedModels" ]; then
+    models=("${parsedModels[@]}")
   fi
 
   echo "models:";
@@ -92,10 +89,7 @@ function createResultsDirectory {
 }
 
 function setPrompt {
-
-  # if prompt is already set from command line
-  if [ -n "$prompt" ]; then
-    echo "already set prompt: $prompt"
+  if [ -n "$prompt" ]; then # if prompt is already set from command line
     return
   fi
 
@@ -106,7 +100,6 @@ function setPrompt {
   fi
 
   prompt=$(cat) # Read from standard input (pipe or file)
-  echo "prompt from cat: $prompt"
 }
 
 function savePrompt {
@@ -237,6 +230,162 @@ function createMenu {
   echo '</span>';
 }
 
+function setStats {
+  statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
+  statsPromptEvalDuration=$(grep -oE "prompt eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsPromptEvalRate=$(grep -oE "prompt eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
+  statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
+  statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
+  statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
+
+  addedImages=$(grep -oE "Added image '(.*)'" "$statsFile" | awk '{ print $NF }' | sed "s/'//g")
+  if [ -n "$addedImages" ]; then
+    for image in ${addedImages}; do
+      if ! [ -f "$directory"/"$(basename $image)" ]; then
+        echo "Copying image: $image"
+        cp $image $directory
+      fi
+    done
+  fi
+
+  responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
+  responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
+}
+
+function setOllamaStats {
+  ollamaVersion=$(ollama -v | awk '{print $4}')
+  ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6}' | sed '1d') # Get the first 6 columns of ollama ps output, skipping the header
+  ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
+  ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
+  ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
+}
+
+function setSystemStats {
+  systemArch=$(uname -m) # Get hardware platform
+  systemProcessor=$(uname -p) # Get system processor
+  systemOSName=$(uname -s) # Get system OS name
+  systemOSVersion=$(uname -r) # Get system OS version
+  top=$(top -l 1)
+  systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
+  systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
+}
+
+function saveModelInfo { # Create model info files - for each model, do 'ollama show' and save the results to text file
+  for model in "${models[@]}"; do
+    modelInfoFile="$directory/$model.info.txt"
+    echo "Creating: $modelInfoFile"
+    ollama show "$model" > "$modelInfoFile"
+  done
+}
+
+function setModelInfo {
+  modelInfo="$directory/$model.info.txt"
+  modelArchitecture=$(cat "$modelInfo" | awk '/architecture/ {print $2}') # Get model architecture
+  modelParameters=$(cat "$modelInfo" | awk '/parameters/ {print $2}') # Get model parameters
+  modelContextLength=$(cat "$modelInfo" | awk '/context length/ {print $3}') # Get model context length
+  modelEmbeddingLength=$(cat "$modelInfo" | awk '/embedding length/ {print $3}') # Get model embedding length
+  modelQuantization=$(cat "$modelInfo" | awk '/quantization/ {print $2}') # Get model quantization
+}
+
+function createModelsIndexFile {
+  modelsIndexFile="$directory/models.html"
+  echo "Creating: $modelsIndexFile"
+  {
+    echo "$HEADER<title>$NAME: models</title></head><body>"
+    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime</header>"
+    cat <<- "EOF"
+<br />
+<table>
+  <tr>
+    <th class='left'>model</th>
+    <th>architecture</th>
+    <th>size</th>
+    <th>parameters</th>
+    <th>context<br />length</th>
+    <th>embedding<br />length</th>
+    <th>quantization</th>
+  </tr>
+EOF
+  } > "$modelsIndexFile"
+
+  for model in "${models[@]}"; do
+    setModelInfo
+    {
+      echo "<tr>"
+      echo "<td class='left'><a href='./$model.html'>$model</a></td>"
+      echo "<td>$modelArchitecture</td>"
+      echo "<td>$ollamaSize</td>"
+      echo "<td>$modelParameters</td>"
+      echo "<td>$modelContextLength</td>"
+      echo "<td>$modelEmbeddingLength</td>"
+      echo "<td>$modelQuantization</td>"
+      echo "</tr>"
+    } >> "$modelsIndexFile"
+  done
+
+  {
+    echo "</table>"
+    echo "<br /><br /><p>page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+    echo "$FOOTER"
+  } >> "$modelsIndexFile"
+}
+
+function createModelFile {
+  modelHtmlFile="$directory/$model.html"
+  echo "Creating: $modelHtmlFile"
+  {
+    echo "$HEADER<title>$NAME: $model</title></head><body>"
+    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime<br /><br />"
+    createMenu "$model"
+    echo "</header>"
+    showPrompt
+    showImages
+    echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
+    textarea "$(cat "$modelFile")" 3 25 # 5 padding, max 30 lines
+    echo "</p>"
+
+    echo "<div class='box'><table>"
+    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$model.stats.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left'>words</td><td>$responseWords</td></tr>"
+    echo "<tr><td class='left'>bytes</td><td>$responseBytes</td></tr>"
+    echo "<tr><td class='left'>total duration</td><td>$statsTotalDuration</td></tr>"
+    echo "<tr><td class='left'>load duration</td><td>$statsLoadDuration</td></tr>"
+    echo "<tr><td class='left'>prompt eval count</td><td>$statsPromptEvalCount</td></tr>"
+    echo "<tr><td class='left'>prompt eval duration</td><td>$statsPromptEvalDuration</td></tr>"
+    echo "<tr><td class='left'>prompt eval rate</td><td>$statsPromptEvalRate</td></tr>"
+    echo "<tr><td class='left'>eval count</td><td>$statsEvalCount</td></tr>"
+    echo "<tr><td class='left'>eval duration</td><td>$statsEvalDuration</td></tr>"
+    echo "<tr><td class='left'>eval rate</td><td>$statsEvalRate</td></tr>"
+    echo "</table></div>"
+
+    echo "<div class='box'><table>"
+    echo "<tr><td class='left' colspan='2'>Model (<a href='./$model.info.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left'>name</td><td><a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a></td></tr>"
+    echo "<tr><td class='left'>architecture</td><td>$modelArchitecture</td></tr>"
+    echo "<tr><td class='left'>size</td><td>$ollamaSize</td></tr>"
+    echo "<tr><td class='left'>parameters</td><td>$modelParameters</td></tr>"
+    echo "<tr><td class='left'>context length</td><td>$modelContextLength</td></tr>"
+    echo "<tr><td class='left'>embedding length</td><td>$modelEmbeddingLength</td></tr>"
+    echo "<tr><td class='left'>quantization</td><td>$modelQuantization</td></tr>"
+    echo "</table></div>"
+
+    echo "<div class='box'><table>"
+    echo "<tr><td class='left' colspan='2'>System</td></tr>"
+    echo "<tr><td class='left'>ollama proc</td><td>$ollamaProcessor</td></tr>"
+    echo "<tr><td class='left'>ollama version</td><td>$ollamaVersion</td></tr>"
+    echo "<tr><td class='left'>sys arch</td><td>$systemArch</td></tr>"
+    echo "<tr><td class='left'>sys processor</td><td>$systemProcessor</td></tr>"
+    echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
+    echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
+    echo "</table></div>"
+
+    echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$FOOTER"
+  } > "$modelHtmlFile"
+}
+
 function createResultsIndexFile {
   resultsIndexFile="${RESULTS_DIRECTORY}/index.html"
   echo "Creating: $resultsIndexFile"
@@ -323,155 +472,6 @@ function finishIndexFile {
     sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $indexFile
 }
 
-function createModelFile {
-  modelHtmlFile="$directory/$model.html"
-  echo "Creating: $modelHtmlFile"
-  {
-    echo "$HEADER<title>$NAME: $model</title></head><body>"
-    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime<br /><br />"
-    createMenu "$model"
-    echo "</header>"
-    showPrompt
-    showImages
-    echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
-    textarea "$(cat "$modelFile")" 3 25 # 5 padding, max 30 lines
-    echo "</p>"
-
-    echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$model.stats.txt'>raw</a>)</td></tr>"
-    echo "<tr><td class='left'>words</td><td>$responseWords</td></tr>"
-    echo "<tr><td class='left'>bytes</td><td>$responseBytes</td></tr>"
-    echo "<tr><td class='left'>total duration</td><td>$statsTotalDuration</td></tr>"
-    echo "<tr><td class='left'>load duration</td><td>$statsLoadDuration</td></tr>"
-    echo "<tr><td class='left'>prompt eval count</td><td>$statsPromptEvalCount</td></tr>"
-    echo "<tr><td class='left'>prompt eval duration</td><td>$statsPromptEvalDuration</td></tr>"
-    echo "<tr><td class='left'>prompt eval rate</td><td>$statsPromptEvalRate</td></tr>"
-    echo "<tr><td class='left'>eval count</td><td>$statsEvalCount</td></tr>"
-    echo "<tr><td class='left'>eval duration</td><td>$statsEvalDuration</td></tr>"
-    echo "<tr><td class='left'>eval rate</td><td>$statsEvalRate</td></tr>"
-    echo "</table></div>"
-
-    echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Model</td></tr>"
-    echo "<tr><td class='left'>name</td><td><a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a></td></tr>"
-    echo "<tr><td class='left'>architecture</td><td>$modelArchitecture</td></tr>"
-    echo "<tr><td class='left'>size</td><td>$ollamaSize</td></tr>"
-    echo "<tr><td class='left'>parameters</td><td>$modelParameters</td></tr>"
-    echo "<tr><td class='left'>context length</td><td>$modelContextLength</td></tr>"
-    echo "<tr><td class='left'>embedding length</td><td>$modelEmbeddingLength</td></tr>"
-    echo "<tr><td class='left'>quantization</td><td>$modelQuantization</td></tr>"
-    echo "</table></div>"
-
-    echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>System</td></tr>"
-    echo "<tr><td class='left'>ollama proc</td><td>$ollamaProcessor</td></tr>"
-    echo "<tr><td class='left'>ollama version</td><td>$ollamaVersion</td></tr>"
-    echo "<tr><td class='left'>sys arch</td><td>$systemArch</td></tr>"
-    echo "<tr><td class='left'>sys processor</td><td>$systemProcessor</td></tr>"
-    echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
-    echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
-    echo "</table></div>"
-
-    echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "$FOOTER"
-  } > "$modelHtmlFile"
-}
-
-function createModelsIndexFile {
-  modelsIndexFile="$directory/models.html"
-  echo "Creating: $modelsIndexFile"
-  {
-    echo "$HEADER<title>$NAME: models</title></head><body>"
-    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime</header>"
-    cat <<- "EOF"
-<br />
-<table>
-  <tr>
-    <th class='left'>model</th>
-    <th>architecture</th>
-    <th>size</th>
-    <th>parameters</th>
-    <th>context<br />length</th>
-    <th>embedding<br />length</th>
-    <th>quantization</th>
-  </tr>
-EOF
-  } > "$modelsIndexFile"
-}
-
-function addModelToModelsIndexFile {
-  {
-    echo "<tr>"
-    echo "<td class='left'><a href='./$model.html'>$model</a></td>"
-    echo "<td>$modelArchitecture</td>"
-    echo "<td>$ollamaSize</td>"
-    echo "<td>$modelParameters</td>"
-    echo "<td>$modelContextLength</td>"
-    echo "<td>$modelEmbeddingLength</td>"
-    echo "<td>$modelQuantization</td>"
-    echo "</tr>"
-  } >> "$modelsIndexFile"
-}
-
-function finishModelsIndexFile {
-  {
-    echo "</table>"
-    echo "<br /><br /><p>page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
-    echo "$FOOTER"
-  } >> "$modelsIndexFile"
-}
-
-function setStats {
-  statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
-  statsPromptEvalDuration=$(grep -oE "prompt eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsPromptEvalRate=$(grep -oE "prompt eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
-  statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
-  statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
-
-  addedImages=$(grep -oE "Added image '(.*)'" "$statsFile" | awk '{ print $NF }' | sed "s/'//g")
-  if [ -n "$addedImages" ]; then
-    for image in ${addedImages}; do
-      if ! [ -f "$directory"/"$(basename $image)" ]; then
-        echo "Copying image: $image"
-        cp $image $directory
-      fi
-    done
-  fi
-
-  responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
-  responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
-}
-
-function setOllamaStats {
-  ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6}' | sed '1d') # Get the first 6 columns of ollama ps output, skipping the header
-  ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
-  ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
-  ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
-  ollamaVersion=$(ollama -v | awk '{print $4}')
-}
-
-function setSystemStats {
-  systemArch=$(uname -m) # Get hardware platform
-  systemProcessor=$(uname -p) # Get system processor
-  systemOSName=$(uname -s) # Get system OS name
-  systemOSVersion=$(uname -r) # Get system OS version
-  top=$(top -l 1)
-  systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
-  systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
-}
-
-function setModelInfo {
-  modelInfo=$(ollama show "$model")
-  modelArchitecture=$(echo "$modelInfo" | awk '/architecture/ {print $2}') # Get model architecture
-  modelParameters=$(echo "$modelInfo" | awk '/parameters/ {print $2}') # Get model parameters
-  modelContextLength=$(echo "$modelInfo" | awk '/context length/ {print $3}') # Get model context length
-  modelEmbeddingLength=$(echo "$modelInfo" | awk '/embedding length/ {print $3}') # Get model embedding length
-  modelQuantization=$(echo "$modelInfo" | awk '/quantization/ {print $2}') # Get model quantization
-}
-
 parseCommandLine "$@"
 setModels
 setPrompt
@@ -481,10 +481,10 @@ setSystemStats
 setHeaderAndFooter
 createResultsIndexFile
 createIndexFile
+saveModelInfo
 createModelsIndexFile
 
-# Loop through each model and run it with the given prompt
-for model in "${models[@]}"; do
+for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
     echo; echo "Running model: $model"
     modelFile="$directory/$model.txt"
     statsFile="$directory/$model.stats.txt"
@@ -494,13 +494,11 @@ for model in "${models[@]}"; do
     setModelInfo
     setOllamaStats
     setStats
-    clear_model "$model"
     createModelFile
     addModelToIndexFile
-    addModelToModelsIndexFile
+    clear_model "$model"
 done
 
-finishModelsIndexFile
 finishIndexFile
 
 echo; echo "Done: $directory/"
