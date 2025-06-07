@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, grep, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.6"
+VERSION="3.7"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -103,12 +103,13 @@ function setPrompt {
 }
 
 function savePrompt {
+  echo; echo "Prompt: $prompt"
   promptFile="$directory/prompt.txt"
   echo "Creating: $promptFile"
   echo "$prompt" > "$promptFile"
 
   # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
-  echo "Creating: $directory/$tag.prompt.yaml"
+  echo "Creating: $directory/prompt.yaml"
   (
     echo "messages:"
     echo "  - role: system"
@@ -119,7 +120,7 @@ function savePrompt {
       echo "      $line"
     done <<< "$prompt"
     echo "model: ''"
-  ) > "$directory/$tag.prompt.yaml"
+  ) > "$directory/prompt.yaml"
 }
 
 function showPrompt {
@@ -274,19 +275,76 @@ function setSystemStats {
 
 function saveModelInfo { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
-    modelInfoFile="$directory/$model.info.txt"
-    echo "Creating: $modelInfoFile"
-    ollama show "$model" > "$modelInfoFile"
+    modelInfoFileFile="$directory/$model.info.txt"
+    echo "Creating: $modelInfoFileFile"
+    ollama show "$model" > "$modelInfoFileFile"
   done
 }
 
 function setModelInfo {
-  modelInfo="$directory/$model.info.txt"
-  modelArchitecture=$(cat "$modelInfo" | awk '/architecture/ {print $2}') # Get model architecture
-  modelParameters=$(cat "$modelInfo" | awk '/parameters/ {print $2}') # Get model parameters
-  modelContextLength=$(cat "$modelInfo" | awk '/context length/ {print $3}') # Get model context length
-  modelEmbeddingLength=$(cat "$modelInfo" | awk '/embedding length/ {print $3}') # Get model embedding length
-  modelQuantization=$(cat "$modelInfo" | awk '/quantization/ {print $2}') # Get model quantization
+  modelInfoFile="$directory/$model.info.txt"
+  modelCapabilities=()
+  modelSystemPrompt=""
+  modelTemperature=""
+  section=""
+
+  while IFS= read -r line; do # Read the content of the file line by line
+    line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" # Trim leading/trailing whitespace
+    if [[ -z "$line" ]]; then
+      section=""
+      continue; # Skip empty lines
+    fi
+    if [[ $line == "Model"* ]]; then
+      section="Model"
+      continue
+    elif [[ $line == "Capabilities"* ]]; then
+      section="Capabilities"
+      continue
+    elif [[ $line == "System"* ]]; then
+      section="System"
+      continue
+    elif [[ $line == "Parameters"* ]]; then
+      section="Parameters"
+      continue
+    elif [[ $line == "License"* ]]; then
+      section="License"
+      continue
+    elif [[ $line == "Projector"* ]]; then
+      section="Projector"
+      continue
+    fi
+
+    case $section in
+      "Model")
+        if [[ "$line" == "architecture"* ]]; then
+          modelArchitecture=$(echo "$line" | awk '/architecture/ {print $2}') # Get model architecture
+        fi
+        if [[ "$line" == "parameters"* ]]; then
+          modelParameters=$(echo "$line" | awk '/parameters/ {print $2}') # Get model parameters
+        fi
+        if [[ "$line" == "context length"* ]]; then
+          modelContextLength=$(echo "$line" | awk '/context length/ {print $3}') # Get model context length
+        fi
+        if [[ "$line" == "embedding length"* ]]; then
+          modelEmbeddingLength=$(echo "$line" | awk '/embedding length/ {print $3}') # Get model embedding length
+        fi
+        if [[ "$line" == "quantization"* ]]; then
+          modelQuantization=$(echo "$line" | awk '/quantization/ {print $2}') # Get model quantization
+        fi
+        ;;
+      "Capabilities")
+        modelCapabilities+=("$line")
+        ;;
+      "System")
+        modelSystemPrompt+="$line"$'\n'
+        ;;
+      "Parameters")
+        if [[ "$line" == "temperature"* ]]; then
+          modelTemperature=$(echo "$line" | awk '/temperature/ {print $2}') # Get model temperature
+        fi
+        ;;
+    esac
+  done < "$modelInfoFile"
 }
 
 function createModelsIndexFile {
@@ -301,11 +359,14 @@ function createModelsIndexFile {
   <tr>
     <th class='left'>model</th>
     <th>architecture</th>
-    <th>size</th>
     <th>parameters</th>
     <th>context<br />length</th>
     <th>embedding<br />length</th>
     <th>quantization</th>
+    <th>temperature</th>
+    <th>capabilities</th>
+    <th class='left'>system prompt</th>
+    <th>(raw)</th>
   </tr>
 EOF
   } > "$modelsIndexFile"
@@ -316,11 +377,14 @@ EOF
       echo "<tr>"
       echo "<td class='left'><a href='./$model.html'>$model</a></td>"
       echo "<td>$modelArchitecture</td>"
-      echo "<td>$ollamaSize</td>"
       echo "<td>$modelParameters</td>"
       echo "<td>$modelContextLength</td>"
       echo "<td>$modelEmbeddingLength</td>"
       echo "<td>$modelQuantization</td>"
+      echo "<td>$modelTemperature</td>"
+      echo "<td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
+      echo "<td class='left'>$modelSystemPrompt</td>"
+      echo "<td><a href='./$model.info.txt'>raw</a></td>"
       echo "</tr>"
     } >> "$modelsIndexFile"
   done
@@ -362,23 +426,24 @@ function createModelFile {
 
     echo "<div class='box'><table>"
     echo "<tr><td class='left' colspan='2'>Model (<a href='./$model.info.txt'>raw</a>)</td></tr>"
-    echo "<tr><td class='left'>name</td><td><a target='ollama' href='https://ollama.com/library/${ollamaModel}'>$ollamaModel</a></td></tr>"
-    echo "<tr><td class='left'>architecture</td><td>$modelArchitecture</td></tr>"
-    echo "<tr><td class='left'>size</td><td>$ollamaSize</td></tr>"
-    echo "<tr><td class='left'>parameters</td><td>$modelParameters</td></tr>"
-    echo "<tr><td class='left'>context length</td><td>$modelContextLength</td></tr>"
-    echo "<tr><td class='left'>embedding length</td><td>$modelEmbeddingLength</td></tr>"
-    echo "<tr><td class='left'>quantization</td><td>$modelQuantization</td></tr>"
+    echo "<tr><td class='left'>name</td><td class='left'><a target='ollama' href='https://ollama.com/library/${model}'>$model</a></td></tr>"
+    echo "<tr><td class='left'>architecture</td><td class='left'>$modelArchitecture</td></tr>"
+    echo "<tr><td class='left'>size</td><td class='left'>$ollamaSize</td></tr>"
+    echo "<tr><td class='left'>parameters</td><td class='left'>$modelParameters</td></tr>"
+    echo "<tr><td class='left'>context length</td><td class='left'>$modelContextLength</td></tr>"
+    echo "<tr><td class='left'>embedding length</td><td  class='left'>$modelEmbeddingLength</td></tr>"
+    echo "<tr><td class='left'>quantization</td><td class='left'>$modelQuantization</td></tr>"
+    echo "<tr><td class='left'>capabilities</td><td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
     echo "</table></div>"
 
     echo "<div class='box'><table>"
     echo "<tr><td class='left' colspan='2'>System</td></tr>"
-    echo "<tr><td class='left'>ollama proc</td><td>$ollamaProcessor</td></tr>"
-    echo "<tr><td class='left'>ollama version</td><td>$ollamaVersion</td></tr>"
-    echo "<tr><td class='left'>sys arch</td><td>$systemArch</td></tr>"
-    echo "<tr><td class='left'>sys processor</td><td>$systemProcessor</td></tr>"
-    echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
-    echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
+    echo "<tr><td class='left'>ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
+    echo "<tr><td class='left'>ollama version</td><td class='left'>$ollamaVersion</td></tr>"
+    echo "<tr><td class='left'>sys arch</td><td class='left'>$systemArch</td></tr>"
+    echo "<tr><td class='left'>sys processor</td><td class='left'>$systemProcessor</td></tr>"
+    echo "<tr><td class='left'>sys memory</td><td class='left'>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
+    echo "<tr><td class='left'>sys OS</td><td class='left'>$systemOSName $systemOSVersion</td></tr>"
     echo "</table></div>"
 
     echo "<br /><br />page created:   $(date '+%Y-%m-%d %H:%M:%S')"
