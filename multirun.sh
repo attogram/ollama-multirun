@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, grep, sed, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.4"
+VERSION="3.5"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -53,7 +53,9 @@ function parseCommandLine {
 
 function setModels {
 
-  models=$(ollama list | awk '{if (NR > 1) print $1}' | sort) # Get list of models, sorted alphabetically
+   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
+
+
 
   if [ -z "$models" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'"
@@ -61,7 +63,6 @@ function setModels {
   fi
 
   newModels=()
-
   if [ -n "$modelsList" ]; then
     IFS=',' read -ra modelsListArray <<< "$modelsList" # parse csv into modelsListArray
     for m in "${modelsListArray[@]}"; do
@@ -73,15 +74,12 @@ function setModels {
       fi
     done
   fi
-
   if [ -n "$newModels" ]; then
     models=("${newModels[@]}")
   fi
 
-  echo "Models:";
-  for m in "${models[@]}"; do
-    echo "$m"
-  done
+  echo "models:";
+  echo "${models[@]}"
   echo
 }
 
@@ -97,6 +95,7 @@ function setPrompt {
 
   # if prompt is already set from command line
   if [ -n "$prompt" ]; then
+    echo "already set prompt: $prompt"
     return
   fi
 
@@ -107,6 +106,7 @@ function setPrompt {
   fi
 
   prompt=$(cat) # Read from standard input (pipe or file)
+  echo "prompt from cat: $prompt"
 }
 
 function savePrompt {
