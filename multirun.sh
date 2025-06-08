@@ -15,10 +15,10 @@
 #    To set a list of models to use, set as a comma-seperated list with -m
 #      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
-# Requires: ollama, bash, expect, awk, basename, grep, sed, sort, top, tr, uname, wc
+# Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="3.8"
+VERSION="3.9"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -52,7 +52,6 @@ function parseCommandLine {
 }
 
 function setModels {
-
   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
   if [ -z "$models" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'"
@@ -61,8 +60,6 @@ function setModels {
 
   parsedModels=()
   if [ -n "$modelsList" ]; then
-    modelsList=$(for each in ${modelsList[@]}; do echo $each; done | sort)
-
     IFS=',' read -ra modelsListArray <<< "$modelsList" # parse csv into modelsListArray
     for m in "${modelsListArray[@]}"; do
       if [[ "${models[*]}" =~ "$m" ]]; then # if model exists
@@ -80,6 +77,15 @@ function setModels {
   echo "models:";
   echo "${models[@]}"
   echo
+}
+
+function safeTag() {
+  local input="$1" # Get the input
+  input=${input:0:50} # Truncate to first 50 characters
+  input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
+  input=$(echo "$input" | sed "s/ /_/g") # Replace spaces with underscores
+  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_')
+  echo "$input" # Output the sanitized string
 }
 
 function createResultsDirectory {
@@ -105,7 +111,7 @@ function setPrompt {
 }
 
 function savePrompt {
-  echo; echo "Prompt: $prompt"; echo
+  echo; echo "Prompt:"; echo "$prompt"; echo
   promptFile="$directory/prompt.txt"
   echo "Creating: $promptFile"
   echo "$prompt" > "$promptFile"
@@ -126,8 +132,6 @@ function savePrompt {
 }
 
 function showPrompt {
-  promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
-  promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
   echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
   echo "  words:$promptWords  bytes:$promptBytes<br />"
   textarea "$prompt" 0 10 # 0 padding, max 10 lines
@@ -167,51 +171,44 @@ function textarea() {
   echo "<textarea readonly rows='$lines'>${content}</textarea>"
 }
 
-function safeTag() {
-    local input="$1" # Get the input
-    input=${input:0:50} # Truncate to first 50 characters
-    input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
-    input=$(echo "$input" | sed "s/ /_/g") # Replace spaces with underscores
-    input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_')
-    echo "$input" # Output the sanitized string
-}
-
-function clear_model {
+function clearModel {
   echo "Clearing: $1"
+  local expectedPrompt=">>> "
   local run="ollama run $1"
-  expect -c "spawn $run
-    sleep 1;
-    send -- \"/clear\n\"; 
-    sleep 1;
-    send -- \"/bye\n\"; 
-    interact;"
+  expect \
+    -c "spawn $run" \
+    -c "expect \"$expectedPrompt\"" \
+    -c 'send -- "/clear\n"' \
+    -c "expect \"$expectedPrompt\"" \
+    -c 'send -- "/bye\n"' \
+  ;
   echo "Stopping: $1"
   ollama stop "$1"
 }
 
-function setHeader {
-  HEADER=$(cat <<EOF
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  a:hover { background-color: yellow; color: black; }
-  body { font-family: monospace; }
-  header, footer { background-color: #f0f0f0; padding: 10px; }
-  li { margin: 5px; }
-  table, td, th { border-collapse: collapse; }
-  td, th { border: 1px solid #cccccc; padding: 5px; text-align: right; }
-  tr:hover { background-color: lightyellow; color: black; }
-  textarea { border: 1px solid #cccccc; white-space: pre-wrap; width: 90%; }
-  .box { display: inline-block; margin: 3px; padding: 2px; vertical-align: top; }
-  .left { text-align: left; }
-  .menu { font-size: small; }
-</style>
+function showHeader {
+  title="$1"
+  cat << "EOF"
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    a:hover { background-color: yellow; color: black; }
+    body { font-family: monospace; }
+    header, footer { background-color: #f0f0f0; padding: 10px; }
+    li { margin: 5px; }
+    table, td, th { border-collapse: collapse; }
+    td, th { border: 1px solid #cccccc; padding: 5px; text-align: right; }
+    tr:hover { background-color: lightyellow; color: black; }
+    textarea { border: 1px solid #cccccc; white-space: pre-wrap; width: 90%; }
+    .box { display: inline-block; margin: 3px; padding: 2px; vertical-align: top; }
+    .left { text-align: left; }
+    .menu { font-size: small; }
+  </style>
 EOF
-  )
-
+  echo "<title>$title</title></head><body>"
 }
 
 function showFooter {
@@ -258,6 +255,9 @@ function setStats {
 
   responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
   responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
+
+  promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
+  promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 }
 
 function setOllamaStats {
@@ -356,7 +356,7 @@ function createModelsIndexFile {
   modelsIndexFile="$directory/models.html"
   echo "Creating: $modelsIndexFile"
   {
-    echo "$HEADER<title>$NAME: models</title></head><body>"
+    showHeader "$NAME: models"
     echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime</header>"
     cat <<- "EOF"
 <br />
@@ -404,7 +404,7 @@ function createModelFile {
   modelHtmlFile="$directory/$model.html"
   echo "Creating: $modelHtmlFile"
   {
-    echo "$HEADER<title>$NAME: $model</title></head><body>"
+    showHeader "$NAME: $model"
     echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime<br /><br />"
     createMenu "$model"
     echo "</header>"
@@ -458,7 +458,7 @@ function createResultsIndexFile {
   resultsIndexFile="${RESULTS_DIRECTORY}/index.html"
   echo "Creating: $resultsIndexFile"
   {
-    echo "$HEADER<title>$NAME: results</title></head><body>"
+    showHeader "$NAME: results"
     echo "<header><p><b>$NAME</b></p></header>"
     echo "<ul>"
     for dir in "$RESULTS_DIRECTORY"/*; do
@@ -475,7 +475,7 @@ function createIndexFile {
   indexFile="$directory/index.html"
   echo "Creating: $indexFile"
   {
-    echo "$HEADER<title>$NAME: $tag</title></head><body>"
+    showHeader "$NAME: $tag"
     echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime<br /><br />"
     createMenu "index"
     echo  "</header>"
@@ -501,21 +501,21 @@ EOF
 }
 
 function addModelToIndexFile {
-    (
-        echo "<tr>"
-        echo "<td class='left'><a href='./$model.html'>$model</a></td>"
-        echo "<td>$responseWords</td>"
-        echo "<td>$responseBytes</td>"
-        echo "<td>$statsTotalDuration</td>"
-        echo "<td>$statsLoadDuration</td>"
-        echo "<td>$statsPromptEvalCount</td>"
-        echo "<td>$statsPromptEvalDuration</td>"
-        echo "<td>$statsPromptEvalRate</td>"
-        echo "<td>$statsEvalCount</td>"
-        echo "<td>$statsEvalDuration</td>"
-        echo "<td>$statsEvalRate</td>"
-        echo "</tr>"
-    ) >> "$indexFile"
+  (
+    echo "<tr>"
+    echo "<td class='left'><a href='./$model.html'>$model</a></td>"
+    echo "<td>$responseWords</td>"
+    echo "<td>$responseBytes</td>"
+    echo "<td>$statsTotalDuration</td>"
+    echo "<td>$statsLoadDuration</td>"
+    echo "<td>$statsPromptEvalCount</td>"
+    echo "<td>$statsPromptEvalDuration</td>"
+    echo "<td>$statsPromptEvalRate</td>"
+    echo "<td>$statsEvalCount</td>"
+    echo "<td>$statsEvalDuration</td>"
+    echo "<td>$statsEvalRate</td>"
+    echo "</tr>"
+  ) >> "$indexFile"
 }
 
 function finishIndexFile {
@@ -534,9 +534,12 @@ function finishIndexFile {
     showFooter
   } >> "$indexFile"
 
-    imagesHtml=$(showImages)
-    sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $indexFile
+  imagesHtml=$(showImages)
+  sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $indexFile
 }
+
+export OLLAMA_MAX_LOADED_MODELS=1
+export OLLAMA_KEEP_ALIVE=0 # or: run --keepalive 0
 
 parseCommandLine "$@"
 setModels
@@ -544,25 +547,24 @@ setPrompt
 createResultsDirectory
 savePrompt
 setSystemStats
-setHeader
 createResultsIndexFile
 createIndexFile
 saveModelInfo
 createModelsIndexFile
 
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
-    echo; echo "Running model: $model"
-    modelFile="$directory/$model.txt"
-    statsFile="$directory/$model.stats.txt"
-    echo "Creating: $modelFile"
-    echo "Creating: $statsFile"
-    ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
-    setModelInfo
-    setOllamaStats
-    setStats
-    createModelFile
-    addModelToIndexFile
-    clear_model "$model"
+  echo; echo "Running model: $model"
+  modelFile="$directory/$model.txt"
+  statsFile="$directory/$model.stats.txt"
+  echo "Creating: $modelFile"
+  echo "Creating: $statsFile"
+  ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
+  setModelInfo
+  setOllamaStats
+  setStats
+  createModelFile
+  addModelToIndexFile
+  clearModel "$model"
 done
 
 finishIndexFile
