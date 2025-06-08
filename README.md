@@ -77,12 +77,12 @@ Before running `ollama multirun`, ensure you have the following installed:
 
 Run the script from your terminal. The results will be saved in a new directory inside the `results/` folder.
 
-1.  **Enter prompt interactively (default):**
+- **Enter prompt interactively (default):**
     ```bash
     ./multirun.sh
     ```
 
-2.  **Enter prompt from the command line:**
+-  **Enter prompt from the command line:**
     ```bash
     ./multirun.sh "Your prompt here"
     ```
@@ -90,12 +90,12 @@ Run the script from your terminal. The results will be saved in a new directory 
     ./multirun.sh "Summarize this document: $(cat document.txt)"
     ```
 
-3.  **Enter prompt from a file:**
+- **Enter prompt from a file:**
     ```bash
     ./multirun.sh < my_prompt.txt
     ```
 
-4.  **Enter prompt from a pipe:**
+- **Enter prompt from a pipe:**
     ```bash
     echo "Your prompt here" | ./multirun.sh
     ```
@@ -103,6 +103,17 @@ Run the script from your terminal. The results will be saved in a new directory 
     echo "Summarize this document: $(cat document.txt)" | ./multirun.sh
     ```
 
+- **Specify models to run:**
+    Use the -m option, with comma-seperated list of model names (no spacs 
+    ```bash
+    ./multirun.sh -m model1name,model2name
+    ```
+
+- **Include images:**
+    ```bash
+    ./multirun.sh "Describe this image: ./vision/image.jpg"
+    ```
+    
 ### After Running
 
 Once the script finishes, 
