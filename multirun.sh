@@ -121,7 +121,7 @@ function savePrompt {
   promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
   # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
-  promptYamlFile="$directory/$tag.prompt.txt"
+  promptYamlFile="$directory/$tag.prompt.yaml"
   echo "Creating: $promptYamlFile"
   (
     echo "messages:"
