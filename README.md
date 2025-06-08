@@ -107,7 +107,7 @@ Run the script from your terminal. The results will be saved in a new directory 
     ```
 
 - **Specify models to run:**
-    Use the -m option, with comma-seperated list of model names (no spacs 
+    Use the -m option, with comma-seperated list of model names (no spaces) 
     ```bash
     ./multirun.sh -m model1name,model2name
     ```
