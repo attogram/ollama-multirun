@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.0"
+VERSION="4.1"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -112,9 +112,13 @@ function setPrompt {
 
 function savePrompt {
   echo; echo "Prompt:"; echo "$prompt"; echo
+
   promptFile="$directory/prompt.txt"
   echo "Creating: $promptFile"
   echo "$prompt" > "$promptFile"
+
+  promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
+  promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
   # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
   echo "Creating: $directory/prompt.yaml"
@@ -255,9 +259,6 @@ function setStats {
 
   responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
   responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
-
-  promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
-  promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 }
 
 function setOllamaStats {
