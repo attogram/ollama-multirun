@@ -12,15 +12,16 @@ Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
 
-## Examples
-Run results:
-![Screenshot of the run page](docs/run.page.png)
+## Screenshots
 
-Model page:
-![Screenshot of the index page](docs/model.page.png)
+### Run index page:
+![Screenshot of the run page](docs/screenshots/run.page.png)
 
-Index page:
-![Screenshot of the index page](docs/main.index.png)
+### Model output page:
+![Screenshot of the index page](docs/screenshots/model.page.png)
+
+* [View more screenshots](docs/screenshots/README.md)
+
 
 ## ✨ Features
 
@@ -135,6 +136,7 @@ ollama-multirun/
         ├── models.html     # HTML models info summary
         ├── prompt.txt      # The raw prompt used
         ├── prompt_tag.prompt.yaml # Prompt in GitHub YAML format
+        ├── image.jpg       # If an image was included in the prompt, it will be saved here
         ├── model1.html     # HTML page for model1's output and stats
         ├── model1.txt      # Raw text output from model1
         ├── model1.stats.txt# Raw stats from model1
