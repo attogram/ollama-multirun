@@ -138,10 +138,10 @@ ollama-multirun/
         ├── prompt_tag.prompt.yaml # Prompt in GitHub YAML format
         ├── image.jpg       # If an image was included in the prompt, it will be saved here
         ├── model1.html     # HTML page for model1's output and stats
-        ├── model1.txt      # Raw text output from model1
-        ├── model1.stats.txt# Raw stats from model1
-        ├── model1.info.txt # Raw info from model1
-        ├── model2.html     # ... and so on for each model
+        ├── model1.output.txt  # Raw text output from model1
+        ├── model1.stats.txt   # Raw stats from model1
+        ├── model1.info.txt    # Raw info from model1
+        ├── model2.html        # ... and so on for each model
         └── ...
 ```
 
