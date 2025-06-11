@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.2"
+VERSION="4.3"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -232,7 +232,7 @@ function createMenu {
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b> "
     else
-      echo "<a href='./$modelName.html'>$modelName</a> "
+      echo "<a href='./$(safeTag "$modelName").html'>$modelName</a> "
     fi
   done
   echo '</span>';
@@ -282,14 +282,14 @@ function setSystemStats {
 
 function saveModelInfo { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
-    modelInfoFileFile="$directory/$model.info.txt"
+    modelInfoFileFile="$directory/$(safeTag "$model").info.txt"
     echo "Creating: $modelInfoFileFile"
     ollama show "$model" > "$modelInfoFileFile"
   done
 }
 
 function setModelInfo {
-  modelInfoFile="$directory/$model.info.txt"
+  modelInfoFile="$directory/$(safeTag "$model").info.txt"
   modelCapabilities=()
   modelSystemPrompt=""
   modelTemperature=""
@@ -382,7 +382,7 @@ EOF
     setModelInfo
     {
       echo "<tr>"
-      echo "<td class='left'><a href='./$model.html'>$model</a></td>"
+      echo "<td class='left'><a href='./$(safeTag "$model").html'>$model</a></td>"
       echo "<td>$modelArchitecture</td>"
       echo "<td>$modelParameters</td>"
       echo "<td>$modelContextLength</td>"
@@ -391,7 +391,7 @@ EOF
       echo "<td>$modelTemperature</td>"
       echo "<td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
       echo "<td class='left'>$modelSystemPrompt</td>"
-      echo "<td><a href='./$model.info.txt'>raw</a></td>"
+      echo "<td><a href='./$(safeTag "$model").info.txt'>raw</a></td>"
       echo "</tr>"
     } >> "$modelsIndexFile"
   done
@@ -403,7 +403,7 @@ EOF
 }
 
 function createModelFile {
-  modelHtmlFile="$directory/$model.html"
+  modelHtmlFile="$directory/$(safeTag "$model").html"
   echo "Creating: $modelHtmlFile"
   {
     showHeader "$NAME: $model"
@@ -412,12 +412,12 @@ function createModelFile {
     echo "</header>"
     showPrompt
     showImages
-    echo "<p>Output: $model (<a href='./$model.txt'>raw</a>)<br />"
+    echo "<p>Output: $model (<a href='./$(safeTag "$model").output.txt'>raw</a>)<br />"
     textarea "$(cat "$modelFile")" 3 25 # 5 padding, max 30 lines
     echo "</p>"
 
     echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$model.stats.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeTag "$model").stats.txt'>raw</a>)</td></tr>"
     echo "<tr><td class='left'>words</td><td>$responseWords</td></tr>"
     echo "<tr><td class='left'>bytes</td><td>$responseBytes</td></tr>"
     echo "<tr><td class='left'>total duration</td><td>$statsTotalDuration</td></tr>"
@@ -431,7 +431,7 @@ function createModelFile {
     echo "</table></div>"
 
     echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Model (<a href='./$model.info.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeTag "$model").info.txt'>raw</a>)</td></tr>"
     echo "<tr><td class='left'>name</td><td class='left'><a target='ollama' href='https://ollama.com/library/${model}'>$model</a></td></tr>"
     echo "<tr><td class='left'>architecture</td><td class='left'>$modelArchitecture</td></tr>"
     echo "<tr><td class='left'>size</td><td class='left'>$ollamaSize</td></tr>"
@@ -505,7 +505,7 @@ EOF
 function addModelToIndexFile {
   (
     echo "<tr>"
-    echo "<td class='left'><a href='./$model.html'>$model</a></td>"
+    echo "<td class='left'><a href='./$(safeTag "$model").html'>$(safeTag "$model")</a></td>"
     echo "<td>$responseWords</td>"
     echo "<td>$responseBytes</td>"
     echo "<td>$statsTotalDuration</td>"
@@ -556,8 +556,8 @@ createModelsIndexFile
 
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
   echo; echo "Running model: $model"
-  modelFile="$directory/$model.txt"
-  statsFile="$directory/$model.stats.txt"
+  modelFile="$directory/$(safeTag "$model").output.txt"
+  statsFile="$directory/$(safeTag "$model").stats.txt"
   echo "Creating: $modelFile"
   echo "Creating: $statsFile"
   ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
