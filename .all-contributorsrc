@@ -24,6 +24,15 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "ollama",
+      "name": "Ollama",
+      "avatar_url": "https://avatars.githubusercontent.com/u/151674099?v=4",
+      "profile": "https://ollama.com",
+      "contributions": [
+        "tool"
+      ]
     }
   ],
   "contributorsPerLine": 7,
