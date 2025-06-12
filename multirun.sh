@@ -15,21 +15,24 @@
 #    To set a list of models to use, set as a comma-seperated list with -m
 #      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
+# - Specify results directory:
+#    ./multirun.sh -r /path/to/directory
+#
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.4"
+VERSION="4.5"
 URL="https://github.com/attogram/ollama-multirun"
-RESULTS_DIRECTORY="results"
 
 echo; echo "$NAME v$VERSION"; echo
 
 function parseCommandLine {
   modelsList=""
+  resultsDirectory="results"
   prompt=""
   while (( "$#" )); do
     case "$1" in
-      -m)
+      -m) # specify models to run
         if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
           modelsList=$2
           shift 2
@@ -38,6 +41,16 @@ function parseCommandLine {
           break
         fi
         ;;
+      -r) # specify results directory
+        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+          resultsDirectory=$2
+          shift 2
+        else
+          echo "Error: Argument for $1 is missing" >&2
+          break
+        fi
+        ;;
+
       -*|--*=) # unsupported flags
         shift 2
         ;;
@@ -91,9 +104,11 @@ function safeTag() {
 function createResultsDirectory {
   tag=$(safeTag "$prompt")
   tagDatetime=$(date '+%Y%m%d-%H%M%S')
-  directory="${RESULTS_DIRECTORY}/${tag}_${tagDatetime}"
-  echo; echo "Creating: $directory/"
-  mkdir -p "$directory"
+  directory="$resultsDirectory/${tag}_${tagDatetime}"
+  echo "Results Directory: $directory/"
+  if [ ! -d "$directory" ]; then
+    mkdir -p "$directory"
+  fi
 }
 
 function setPrompt {
@@ -187,6 +202,7 @@ function clearModel {
     -c "expect \"$expectedPrompt\"" \
     -c 'send -- "/bye\n"' \
   ;
+  echo
   echo "Stopping: $1"
   ollama stop "$1"
 }
@@ -457,13 +473,13 @@ function createModelFile {
 }
 
 function createResultsIndexFile {
-  resultsIndexFile="${RESULTS_DIRECTORY}/index.html"
+  resultsIndexFile="${resultsDirectory}/index.html"
   echo "Creating: $resultsIndexFile"
   {
     showHeader "$NAME: results"
     echo "<header><p><b>$NAME</b></p></header>"
     echo "<ul>"
-    for dir in "$RESULTS_DIRECTORY"/*; do
+    for dir in "$resultsDirectory"/*; do
       if [ -d "$dir" ]; then
         echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
       fi
@@ -541,7 +557,7 @@ function finishIndexFile {
 }
 
 export OLLAMA_MAX_LOADED_MODELS=1
-export OLLAMA_KEEP_ALIVE=0 # or: run --keepalive 0
+#export OLLAMA_KEEP_ALIVE=0 # or: run --keepalive 0
 
 parseCommandLine "$@"
 setModels
@@ -561,8 +577,8 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   echo "Creating: $modelFile"
   echo "Creating: $statsFile"
   ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
-  setModelInfo
   setOllamaStats
+  setModelInfo
   setStats
   createModelFile
   addModelToIndexFile
