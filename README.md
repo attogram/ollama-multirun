@@ -1,7 +1,4 @@
 # ollama-multirun
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 ![Logo](docs/logo/logo-250.jpg)
 
@@ -14,6 +11,10 @@ and documenting your local AI experiments
 Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
+
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 ## Screenshots
 
