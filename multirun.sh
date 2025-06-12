@@ -18,7 +18,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.3"
+VERSION="4.4"
 URL="https://github.com/attogram/ollama-multirun"
 RESULTS_DIRECTORY="results"
 
@@ -42,7 +42,7 @@ function parseCommandLine {
         shift 2
         ;;
       *) # preserve positional arguments
-        prompt="$prompt $1"
+        prompt+="$1"
         shift
         ;;
     esac
