@@ -1,6 +1,6 @@
 # ollama-multirun
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 ![Logo](docs/logo/logo-250.jpg)
@@ -182,6 +182,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://attogram.github.io/"><img src="https://avatars.githubusercontent.com/u/8653063?v=4?s=100" width="100px;" alt="Attogram Project"/><br /><sub><b>Attogram Project</b></sub></a><br /><a href="https://github.com/attogram/ollama-multirun/commits?author=attogram" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Yodo9000"><img src="https://avatars.githubusercontent.com/u/156250481?v=4?s=100" width="100px;" alt="Yodo9000"/><br /><sub><b>Yodo9000</b></sub></a><br /><a href="https://github.com/attogram/ollama-multirun/issues?q=author%3AYodo9000" title="Bug reports">🐛</a></td>
     </tr>
   </tbody>
 </table>

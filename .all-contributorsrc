@@ -15,6 +15,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Yodo9000",
+      "name": "Yodo9000",
+      "avatar_url": "https://avatars.githubusercontent.com/u/156250481?v=4",
+      "profile": "https://github.com/Yodo9000",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
