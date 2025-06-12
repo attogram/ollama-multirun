@@ -33,6 +33,15 @@
       "contributions": [
         "tool"
       ]
+    },
+    {
+      "login": "drumnix",
+      "name": "drumnix",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19171760?v=4",
+      "profile": "https://github.com/drumnix",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
