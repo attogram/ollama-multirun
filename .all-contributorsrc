@@ -8,6 +8,24 @@
   "commitConvention": "angular",
   "contributors": [
     {
+      "login": "attogram",
+      "name": "Attogram Project",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8653063?v=4",
+      "profile": "https://attogram.github.io/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Yodo9000",
+      "name": "Yodo9000",
+      "avatar_url": "https://avatars.githubusercontent.com/u/156250481?v=4",
+      "profile": "https://github.com/Yodo9000",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
       "login": "ollama",
       "name": "Ollama",
       "avatar_url": "https://avatars.githubusercontent.com/u/151674099?v=4",
