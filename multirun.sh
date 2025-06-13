@@ -15,42 +15,52 @@
 #    To set a list of models to use, set as a comma-seperated list with -m
 #      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
-# - Specify results directory:
-#    ./multirun.sh -r /path/to/directory
+#  - By default, will use "./results" as the results directory
+#    To set a results directory:
+#      ./multirun.sh -r /path/to/directory
 #
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.5"
+VERSION="4.6"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
+
+function validateAndParseArgument() {
+  local flag="$1"
+  local value="$2"
+  
+  if [ -n "$value" ] && [ ${value:0:1} != "-" ]; then
+    echo "$value"
+    return 0
+  else
+    echo "Error: Argument for $flag is missing" >&2
+    return 1
+  fi
+}
 
 function parseCommandLine {
   modelsList=""
   resultsDirectory="results"
   prompt=""
+  
   while (( "$#" )); do
     case "$1" in
       -m) # specify models to run
-        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-          modelsList=$2
+        if modelsList=$(validateAndParseArgument "$1" "$2"); then
           shift 2
         else
-          echo "Error: Argument for $1 is missing" >&2
           break
         fi
         ;;
       -r) # specify results directory
-        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-          resultsDirectory=$2
+        if resultsDirectory=$(validateAndParseArgument "$1" "$2"); then
           shift 2
         else
-          echo "Error: Argument for $1 is missing" >&2
           break
         fi
         ;;
-
       -*|--*=) # unsupported flags
         shift 2
         ;;
@@ -60,14 +70,13 @@ function parseCommandLine {
         ;;
     esac
   done
-  # set positional arguments in their proper place
-  eval set -- "$prompt"
+  eval set -- "$prompt" # set positional arguments in their proper place
 }
 
 function setModels {
   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
   if [ -z "$models" ]; then
-    echo "No models found. Please install models with 'ollama pull <model-name>'"
+    echo "No models found. Please install models with 'ollama pull <model-name>'" >&2
     exit 1
   fi
 
@@ -78,8 +87,8 @@ function setModels {
       if [[ "${models[*]}" =~ "$m" ]]; then # if model exists
         parsedModels+=("$m")
       else
-        echo "Error: model not found: $m"
-        exit
+        echo "Error: model not found: $m" >&2
+        exit 1
       fi
     done
   fi
@@ -107,7 +116,10 @@ function createResultsDirectory {
   directory="$resultsDirectory/${tag}_${tagDatetime}"
   echo "Results Directory: $directory/"
   if [ ! -d "$directory" ]; then
-    mkdir -p "$directory"
+    if ! mkdir -p "$directory"; then
+      echo "Error: Failed to create directory $directory" >&2
+      exit 1
+    fi
   fi
 }
 
@@ -135,20 +147,22 @@ function savePrompt {
   promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
   promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
-  # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
   promptYamlFile="$directory/$tag.prompt.yaml"
   echo "Creating: $promptYamlFile"
-  (
-    echo "messages:"
-    echo "  - role: system"
-    echo "    content: ''"
-    echo "  - role: user"
-    echo "    content: |"
-    while IFS= read -r line; do
-      echo "      $line"
-    done <<< "$prompt"
-    echo "model: ''"
-  ) > $promptYamlFile
+  generatePromptYaml > "$promptYamlFile"
+}
+
+function generatePromptYaml {
+  # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
+  cat << EOF
+messages:
+  - role: system
+    content: ''
+  - role: user
+    content: |
+$(while IFS= read -r line; do echo "      $line"; done <<< "$prompt")
+model: ''
+EOF
 }
 
 function showPrompt {
@@ -294,6 +308,18 @@ function setSystemStats {
   top=$(top -l 1)
   systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
   systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
+}
+
+function showSystemStats {
+  echo "<div class='box'><table>"
+  echo "<tr><td class='left' colspan='2'>System</td></tr>"
+  echo "<tr><td class='left'>ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
+  echo "<tr><td class='left'>ollama version</td><td class='left'>$ollamaVersion</td></tr>"
+  echo "<tr><td class='left'>sys arch</td><td class='left'>$systemArch</td></tr>"
+  echo "<tr><td class='left'>sys processor</td><td class='left'>$systemProcessor</td></tr>"
+  echo "<tr><td class='left'>sys memory</td><td class='left'>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
+  echo "<tr><td class='left'>sys OS</td><td class='left'>$systemOSName $systemOSVersion</td></tr>"
+  echo "</table></div>"
 }
 
 function saveModelInfo { # Create model info files - for each model, do 'ollama show' and save the results to text file
@@ -458,15 +484,7 @@ function createModelFile {
     echo "<tr><td class='left'>capabilities</td><td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
     echo "</table></div>"
 
-    echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>System</td></tr>"
-    echo "<tr><td class='left'>ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
-    echo "<tr><td class='left'>ollama version</td><td class='left'>$ollamaVersion</td></tr>"
-    echo "<tr><td class='left'>sys arch</td><td class='left'>$systemArch</td></tr>"
-    echo "<tr><td class='left'>sys processor</td><td class='left'>$systemProcessor</td></tr>"
-    echo "<tr><td class='left'>sys memory</td><td class='left'>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
-    echo "<tr><td class='left'>sys OS</td><td class='left'>$systemOSName $systemOSVersion</td></tr>"
-    echo "</table></div>"
+    showSystemStats
 
     showFooter
   } > "$modelHtmlFile"
@@ -540,15 +558,7 @@ function finishIndexFile {
   {
     echo "</table>"
     echo "<br /><br />"
-    echo "<table>"
-    echo "<tr><td class='left' colspan='2'>System</td></tr>"
-    echo "<tr><td class='left'>ollama proc</td><td>$ollamaProcessor</td></tr>"
-    echo "<tr><td class='left'>ollama version</td><td>$ollamaVersion</td></tr>"
-    echo "<tr><td class='left'>sys arch</td><td>$systemArch</td></tr>"
-    echo "<tr><td class='left'>sys processor</td><td>$systemProcessor</td></tr>"
-    echo "<tr><td class='left'>sys memory</td><td>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
-    echo "<tr><td class='left'>sys OS</td><td>$systemOSName $systemOSVersion</td></tr>"
-    echo "</table>"
+    showSystemStats
     showFooter
   } >> "$indexFile"
 
