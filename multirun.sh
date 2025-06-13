@@ -13,7 +13,7 @@
 #
 #  - By default, will use all available models
 #    To set a list of models to use, set as a comma-seperated list with -m
-#      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
+#      ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
 #  - By default, will use "./results" as the results directory
 #    To set a results directory:
@@ -22,47 +22,39 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.6"
+VERSION="4.7"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
-
-function validateAndParseArgument() {
-  local flag="$1"
-  local value="$2"
-  
-  if [ -n "$value" ] && [ ${value:0:1} != "-" ]; then
-    echo "$value"
-    return 0
-  else
-    echo "Error: Argument for $flag is missing" >&2
-    return 1
-  fi
-}
 
 function parseCommandLine {
   modelsList=""
   resultsDirectory="results"
   prompt=""
-  
   while (( "$#" )); do
     case "$1" in
       -m) # specify models to run
-        if modelsList=$(validateAndParseArgument "$1" "$2"); then
+        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+          modelsList=$2
           shift 2
         else
-          break
+          echo "Error: Argument for $1 is missing" >&2
+          exit 1
         fi
         ;;
       -r) # specify results directory
-        if resultsDirectory=$(validateAndParseArgument "$1" "$2"); then
+        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+          resultsDirectory=$2
           shift 2
         else
-          break
+          echo "Error: Argument for $1 is missing" >&2
+          exit 1
         fi
         ;;
       -*|--*=) # unsupported flags
-        shift 2
+        echo "Error: unsupported argument: $1" >&2
+        exit 1
+        #shift 1
         ;;
       *) # preserve positional arguments
         prompt+="$1"
@@ -70,7 +62,8 @@ function parseCommandLine {
         ;;
     esac
   done
-  eval set -- "$prompt" # set positional arguments in their proper place
+  # set positional arguments in their proper place
+  eval set -- "$prompt"
 }
 
 function setModels {
