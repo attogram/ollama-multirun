@@ -13,16 +13,16 @@
 #
 #  - By default, will use all available models
 #    To set a list of models to use, set as a comma-seperated list with -m
-#      ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
+#      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
-#  - By default, will use "./results" as the results directory
-#    To set a results directory:
-#      ./multirun.sh -r /path/to/directory
+#  - By default, will use "./results" as the results outputDirectory
+#    To set a results outputDirectory:
+#      ./multirun.sh -r /path/to/outputDirectory
 #
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.7"
+VERSION="4.8"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -42,7 +42,7 @@ function parseCommandLine {
           exit 1
         fi
         ;;
-      -r) # specify results directory
+      -r) # specify results outputDirectory
         if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
           resultsDirectory=$2
           shift 2
@@ -94,7 +94,7 @@ function setModels {
   echo
 }
 
-function safeTag() {
+function safeString() {
   local input="$1" # Get the input
   input=${input:0:50} # Truncate to first 50 characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
@@ -103,14 +103,14 @@ function safeTag() {
   echo "$input" # Output the sanitized string
 }
 
-function createResultsDirectory {
-  tag=$(safeTag "$prompt")
+function createOutputDirectory {
+  tag=$(safeString "$prompt")
   tagDatetime=$(date '+%Y%m%d-%H%M%S')
-  directory="$resultsDirectory/${tag}_${tagDatetime}"
-  echo "Results Directory: $directory/"
-  if [ ! -d "$directory" ]; then
-    if ! mkdir -p "$directory"; then
-      echo "Error: Failed to create directory $directory" >&2
+  outputDirectory="$resultsDirectory/${tag}_${tagDatetime}"
+  echo "Output Directory: $outputDirectory/"
+  if [ ! -d "$outputDirectory" ]; then
+    if ! mkdir -p "$outputDirectory"; then
+      echo "Error: Failed to create Output Directory $outputDirectory" >&2
       exit 1
     fi
   fi
@@ -133,14 +133,14 @@ function setPrompt {
 function savePrompt {
   echo; echo "Prompt:"; echo "$prompt"; echo
 
-  promptFile="$directory/prompt.txt"
+  promptFile="$outputDirectory/prompt.txt"
   echo "Creating: $promptFile"
   echo "$prompt" > "$promptFile"
 
   promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
   promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
-  promptYamlFile="$directory/$tag.prompt.yaml"
+  promptYamlFile="$outputDirectory/$tag.prompt.yaml"
   echo "Creating: $promptYamlFile"
   generatePromptYaml > "$promptYamlFile"
 }
@@ -255,34 +255,34 @@ function createMenu {
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b> "
     else
-      echo "<a href='./$(safeTag "$modelName").html'>$modelName</a> "
+      echo "<a href='./$(safeString "$modelName").html'>$modelName</a> "
     fi
   done
   echo '</span>';
 }
 
 function setStats {
-  statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
-  statsPromptEvalDuration=$(grep -oE "prompt eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsPromptEvalRate=$(grep -oE "prompt eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $4, $5 }')
-  statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
-  statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$statsFile" | awk '{ print $NF }')
-  statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$statsFile" | awk '{ print $3, $4 }')
+  statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
+  statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
+  statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $4, $5 }')
+  statsPromptEvalDuration=$(grep -oE "prompt eval duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
+  statsPromptEvalRate=$(grep -oE "prompt eval rate:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $4, $5 }')
+  statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $3, $4 }')
+  statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
+  statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $3, $4 }')
 
-  addedImages=$(grep -oE "Added image '(.*)'" "$statsFile" | awk '{ print $NF }' | sed "s/'//g")
+  addedImages=$(grep -oE "Added image '(.*)'" "$modelStatsTxt" | awk '{ print $NF }' | sed "s/'//g")
   if [ -n "$addedImages" ]; then
     for image in ${addedImages}; do
-      if ! [ -f "$directory"/"$(basename $image)" ]; then
+      if ! [ -f "$outputDirectory"/"$(basename $image)" ]; then
         echo "Copying image: $image"
-        cp $image $directory
+        cp $image $outputDirectory
       fi
     done
   fi
 
-  responseWords=$(wc -w < "$modelFile" | awk '{print $1}')
-  responseBytes=$(wc -c < "$modelFile" | awk '{print $1}')
+  responseWords=$(wc -w < "$modelOutputTxt" | awk '{print $1}')
+  responseBytes=$(wc -c < "$modelOutputTxt" | awk '{print $1}')
 }
 
 function setOllamaStats {
@@ -315,16 +315,16 @@ function showSystemStats {
   echo "</table></div>"
 }
 
-function saveModelInfo { # Create model info files - for each model, do 'ollama show' and save the results to text file
+function createModelInfoTxt { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
-    modelInfoFileFile="$directory/$(safeTag "$model").info.txt"
-    echo "Creating: $modelInfoFileFile"
-    ollama show "$model" > "$modelInfoFileFile"
+    modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
+    echo "Creating: $modelInfoTxt"
+    ollama show "$model" > "$modelInfoTxt"
   done
 }
 
 function setModelInfo {
-  modelInfoFile="$directory/$(safeTag "$model").info.txt"
+  modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
   modelCapabilities=()
   modelSystemPrompt=""
   modelTemperature=""
@@ -386,16 +386,16 @@ function setModelInfo {
         fi
         ;;
     esac
-  done < "$modelInfoFile"
+  done < "$modelInfoTxt"
 }
 
-function createModelsIndexFile {
-  modelsIndexFile="$directory/models.html"
-  echo "Creating: $modelsIndexFile"
+function createModelsOverviewHtml {
+  modelsIndexHtml="$outputDirectory/models.html"
+  echo "Creating: $modelsIndexHtml"
   {
     showHeader "$NAME: models"
     echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime</header>"
-    cat <<- "EOF"
+    cat <<- EOF
 <br />
 <table>
   <tr>
@@ -411,13 +411,13 @@ function createModelsIndexFile {
     <th>(raw)</th>
   </tr>
 EOF
-  } > "$modelsIndexFile"
+  } > "$modelsIndexHtml"
 
   for model in "${models[@]}"; do
     setModelInfo
     {
       echo "<tr>"
-      echo "<td class='left'><a href='./$(safeTag "$model").html'>$model</a></td>"
+      echo "<td class='left'><a href='./$(safeString "$model").html'>$model</a></td>"
       echo "<td>$modelArchitecture</td>"
       echo "<td>$modelParameters</td>"
       echo "<td>$modelContextLength</td>"
@@ -426,19 +426,19 @@ EOF
       echo "<td>$modelTemperature</td>"
       echo "<td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
       echo "<td class='left'>$modelSystemPrompt</td>"
-      echo "<td><a href='./$(safeTag "$model").info.txt'>raw</a></td>"
+      echo "<td><a href='./$(safeString "$model").info.txt'>raw</a></td>"
       echo "</tr>"
-    } >> "$modelsIndexFile"
+    } >> "$modelsIndexHtml"
   done
 
   {
     echo "</table>"
     showFooter
-  } >> "$modelsIndexFile"
+  } >> "$modelsIndexHtml"
 }
 
-function createModelFile {
-  modelHtmlFile="$directory/$(safeTag "$model").html"
+function createModelOutputHtml {
+  modelHtmlFile="$outputDirectory/$(safeString "$model").html"
   echo "Creating: $modelHtmlFile"
   {
     showHeader "$NAME: $model"
@@ -447,12 +447,12 @@ function createModelFile {
     echo "</header>"
     showPrompt
     showImages
-    echo "<p>Output: $model (<a href='./$(safeTag "$model").output.txt'>raw</a>)<br />"
-    textarea "$(cat "$modelFile")" 3 25 # 5 padding, max 30 lines
+    echo "<p>Output: $model (<a href='./$(safeString "$model").output.txt'>raw</a>)<br />"
+    textarea "$(cat "$modelOutputTxt")" 3 25 # 5 padding, max 30 lines
     echo "</p>"
 
     echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeTag "$model").stats.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeString "$model").stats.txt'>raw</a>)</td></tr>"
     echo "<tr><td class='left'>words</td><td>$responseWords</td></tr>"
     echo "<tr><td class='left'>bytes</td><td>$responseBytes</td></tr>"
     echo "<tr><td class='left'>total duration</td><td>$statsTotalDuration</td></tr>"
@@ -466,7 +466,7 @@ function createModelFile {
     echo "</table></div>"
 
     echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeTag "$model").info.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeString "$model").info.txt'>raw</a>)</td></tr>"
     echo "<tr><td class='left'>name</td><td class='left'><a target='ollama' href='https://ollama.com/library/${model}'>$model</a></td></tr>"
     echo "<tr><td class='left'>architecture</td><td class='left'>$modelArchitecture</td></tr>"
     echo "<tr><td class='left'>size</td><td class='left'>$ollamaSize</td></tr>"
@@ -483,26 +483,9 @@ function createModelFile {
   } > "$modelHtmlFile"
 }
 
-function createResultsIndexFile {
-  resultsIndexFile="${resultsDirectory}/index.html"
-  echo "Creating: $resultsIndexFile"
-  {
-    showHeader "$NAME: results"
-    echo "<header><p><b>$NAME</b></p></header>"
-    echo "<ul>"
-    for dir in "$resultsDirectory"/*; do
-      if [ -d "$dir" ]; then
-        echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
-      fi
-    done
-    echo "</ul>"
-    showFooter
-  } > $resultsIndexFile
-}
-
-function createIndexFile {
-  indexFile="$directory/index.html"
-  echo "Creating: $indexFile"
+function createOutputIndexHtml {
+  outputIndexHtml="$outputDirectory/index.html"
+  echo "Creating: $outputIndexHtml"
   {
     showHeader "$NAME: $tag"
     echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime<br /><br />"
@@ -526,13 +509,13 @@ function createIndexFile {
     <th>eval<br />rate</th>
   </tr>
 EOF
-  } > "$indexFile"
+  } > "$outputIndexHtml"
 }
 
-function addModelToIndexFile {
+function addModelToOutputIndexHtml {
   (
     echo "<tr>"
-    echo "<td class='left'><a href='./$(safeTag "$model").html'>$(safeTag "$model")</a></td>"
+    echo "<td class='left'><a href='./$(safeString "$model").html'>$(safeString "$model")</a></td>"
     echo "<td>$responseWords</td>"
     echo "<td>$responseBytes</td>"
     echo "<td>$statsTotalDuration</td>"
@@ -544,19 +527,36 @@ function addModelToIndexFile {
     echo "<td>$statsEvalDuration</td>"
     echo "<td>$statsEvalRate</td>"
     echo "</tr>"
-  ) >> "$indexFile"
+  ) >> "$outputIndexHtml"
 }
 
-function finishIndexFile {
+function finishOutputIndexHtml {
   {
     echo "</table>"
     echo "<br /><br />"
     showSystemStats
     showFooter
-  } >> "$indexFile"
+  } >> "$outputIndexHtml"
 
   imagesHtml=$(showImages)
-  sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $indexFile
+  sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $outputIndexHtml
+}
+
+function createMainIndexHtml {
+  resultsIndexFile="${resultsDirectory}/index.html"
+  echo "Creating: $resultsIndexFile"
+  {
+    showHeader "$NAME: results"
+    echo "<header><p><b>$NAME</b></p></header>"
+    echo "<ul>"
+    for dir in "$resultsDirectory"/*; do
+      if [ -d "$dir" ]; then
+        echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
+      fi
+    done
+    echo "</ul>"
+    showFooter
+  } > $resultsIndexFile
 }
 
 export OLLAMA_MAX_LOADED_MODELS=1
@@ -565,29 +565,29 @@ export OLLAMA_MAX_LOADED_MODELS=1
 parseCommandLine "$@"
 setModels
 setPrompt
-createResultsDirectory
+createOutputDirectory
+createMainIndexHtml
 savePrompt
+createModelInfoTxt
+createModelsOverviewHtml
 setSystemStats
-createResultsIndexFile
-createIndexFile
-saveModelInfo
-createModelsIndexFile
+createOutputIndexHtml
 
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
   echo; echo "Running model: $model"
-  modelFile="$directory/$(safeTag "$model").output.txt"
-  statsFile="$directory/$(safeTag "$model").stats.txt"
-  echo "Creating: $modelFile"
-  echo "Creating: $statsFile"
-  ollama run --verbose "$model" -- "${prompt}" > "$modelFile" 2> "$statsFile"
+  modelOutputTxt="$outputDirectory/$(safeString "$model").output.txt"
+  modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
+  echo "Creating: $modelOutputTxt"
+  echo "Creating: $modelStatsTxt"
+  ollama run --verbose "$model" -- "${prompt}" > "$modelOutputTxt" 2> "$modelStatsTxt"
   setOllamaStats
   setModelInfo
   setStats
-  createModelFile
-  addModelToIndexFile
+  createModelOutputHtml
+  addModelToOutputIndexHtml
   clearModel "$model"
 done
 
-finishIndexFile
+finishOutputIndexHtml
 
-echo; echo "Done: $directory/"
+echo; echo "Done: $outputDirectory/"
