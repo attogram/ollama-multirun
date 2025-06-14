@@ -135,6 +135,7 @@ ollama-multirun/
 ├── multirun.sh             # The main script
 └── results/                # Directory where all output runs are stored
     ├── index.html          # Global index of all past runs
+    ├── models.html         # Global index of all models, with links to past run results
     └── your_prompt_tag_YYYYMMDD-HHMMSS/ # A directory for each specific run
         ├── index.html      # HTML summary page for this run
         ├── models.html     # HTML models info summary
