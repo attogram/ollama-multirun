@@ -22,7 +22,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.10"
+VERSION="4.11"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -294,11 +294,11 @@ function setSystemStats {
   systemProcessor=$(uname -p) # Get system processor
   systemOSName=$(uname -s) # Get system OS name
   systemOSVersion=$(uname -r) # Get system OS version
-  top=$(top -l 1)
   setSystemMemoryStats
 }
 
 function setSystemMemoryStats {
+  top=$(top -l 1)
   systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
   systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
 }
