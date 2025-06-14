@@ -22,7 +22,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.11"
+VERSION="5.0"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -199,7 +199,6 @@ function textarea() {
 }
 
 function clearModel {
-  echo "Clearing: $1"
   expect \
     -c "spawn ollama run $1" \
     -c "expect \">>> \"" \
