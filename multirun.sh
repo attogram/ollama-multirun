@@ -22,7 +22,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.9"
+VERSION="4.10"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -200,18 +200,12 @@ function textarea() {
 
 function clearModel {
   echo "Clearing: $1"
-  local expectedPrompt=">>> "
-  local run="ollama run $1"
   expect \
-    -c "spawn $run" \
-    -c "expect \"$expectedPrompt\"" \
+    -c "spawn ollama run $1" \
+    -c "expect \">>> \"" \
     -c 'send -- "/clear\n"' \
-    -c "expect \"$expectedPrompt\"" \
-    -c 'send -- "/bye\n"' \
+    -c "expect \"Cleared session context\"" \
   ;
-  echo
-  echo "Stopping: $1"
-  ollama stop "$1"
 }
 
 function showHeader {
@@ -240,8 +234,10 @@ EOF
 }
 
 function showFooter {
+  title="$1"
   echo "<br /><br />"
   echo "<footer>"
+  echo "<p>$title</p>"
   echo "<p>page created:   $(date '+%Y-%m-%d %H:%M:%S')</p>"
   echo "<p>Generated with: <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p>"
   echo "</footer></body></html>"
@@ -299,6 +295,10 @@ function setSystemStats {
   systemOSName=$(uname -s) # Get system OS name
   systemOSVersion=$(uname -r) # Get system OS version
   top=$(top -l 1)
+  setSystemMemoryStats
+}
+
+function setSystemMemoryStats {
   systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
   systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
 }
@@ -395,7 +395,8 @@ function createModelsOverviewHtml {
   echo "Creating: $modelsIndexHtml"
   {
     showHeader "$NAME: models"
-    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime</header>"
+    titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime"
+    echo "<header>$titleLink</header>"
     cat <<- EOF
 <br />
 <table>
@@ -436,7 +437,7 @@ EOF
 
   {
     echo "</table>"
-    showFooter
+    showFooter "$titleLink"
   } >> "$modelsIndexHtml"
 }
 
@@ -445,7 +446,8 @@ function createModelOutputHtml {
   echo "Creating: $modelHtmlFile"
   {
     showHeader "$NAME: $model"
-    echo "<header><a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime<br /><br />"
+    titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime"
+    echo "<header>$titleLink<br /><br />"
     createMenu "$model"
     echo "</header>"
     showPrompt
@@ -482,7 +484,7 @@ function createModelOutputHtml {
 
     showSystemStats
 
-    showFooter
+    showFooter "$titleLink"
   } > "$modelHtmlFile"
 }
 
@@ -491,7 +493,8 @@ function createOutputIndexHtml {
   echo "Creating: $outputIndexHtml"
   {
     showHeader "$NAME: $tag"
-    echo "<header><a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime<br /><br />"
+    titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
+    echo "<header>$titleLink<br /><br />"
     createMenu "index"
     echo  "</header>"
     showPrompt
@@ -518,7 +521,7 @@ EOF
 function addModelToOutputIndexHtml {
   (
     echo "<tr>"
-    echo "<td class='left'><a href='./$(safeString "$model").html'>$(safeString "$model")</a></td>"
+    echo "<td class='left'><a href='./$(safeString "$model").html'>$model</a></td>"
     echo "<td>$responseWords</td>"
     echo "<td>$responseBytes</td>"
     echo "<td>$statsTotalDuration</td>"
@@ -538,7 +541,8 @@ function finishOutputIndexHtml {
     echo "</table>"
     echo "<br /><br />"
     showSystemStats
-    showFooter
+    titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
+    showFooter "$titleLink"
   } >> "$outputIndexHtml"
 
   imagesHtml=$(showImages)
@@ -550,7 +554,8 @@ function createMainIndexHtml {
   echo "Creating: $resultsIndexFile"
   {
     showHeader "$NAME: results"
-    echo "<header><p><b>$NAME</b></p></header>"
+    titleLink="<b>$NAME</b>"
+    echo "<header>$titleLink</header>"
     echo "<p><a href='models.html'>Models Index</a></p>"
     echo "<p>Runs:<ul>"
     for dir in "$resultsDirectory"/*; do
@@ -559,7 +564,7 @@ function createMainIndexHtml {
       fi
     done
     echo "</ul></p>"
-    showFooter
+    showFooter "$titleLink"
   } > $resultsIndexFile
 }
 
@@ -587,7 +592,8 @@ function createMainModelIndexHtml {
   echo "Creating: $mainModelIndexHtml"
   {
     showHeader "$NAME: Model Run Index"
-    echo "<header><b><a href='index.html'>$NAME</a></b>: Model Run Index</header>"
+    titleLink="<b><a href='index.html'>$NAME</a></b>: Model Run Index"
+    echo "<header>$titleLink</header>"
 
     echo '<p>Models: '
     for foundModel in "${modelsFound[@]}"; do
@@ -612,12 +618,11 @@ function createMainModelIndexHtml {
     done
     echo "</ul>"
     echo "<p><a href='./models.html'>top</a></p>"
-    showFooter
+    showFooter "$titleLink"
   } > "$mainModelIndexHtml"
 }
 
 export OLLAMA_MAX_LOADED_MODELS=1
-#export OLLAMA_KEEP_ALIVE=0 # or: run --keepalive 0
 
 parseCommandLine "$@"
 setModels
@@ -631,18 +636,19 @@ setSystemStats
 createOutputIndexHtml
 
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
-  echo; echo "Running model: $model"
+  echo; echo "Running model: $model"; echo
+  clearModel "$model"
   modelOutputTxt="$outputDirectory/$(safeString "$model").output.txt"
   modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
   echo "Creating: $modelOutputTxt"
   echo "Creating: $modelStatsTxt"
   ollama run --verbose "$model" -- "${prompt}" > "$modelOutputTxt" 2> "$modelStatsTxt"
+  setSystemMemoryStats
   setOllamaStats
   setModelInfo
   setStats
   createModelOutputHtml
   addModelToOutputIndexHtml
-  clearModel "$model"
 done
 
 finishOutputIndexHtml
