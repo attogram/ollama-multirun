@@ -15,14 +15,14 @@
 #    To set a list of models to use, set as a comma-seperated list with -m
 #      example:  ./multirun.sh -m deepseek-r1:1.5b,deepseek-r1:8b
 #
-#  - By default, will use "./results" as the results outputDirectory
-#    To set a results outputDirectory:
-#      ./multirun.sh -r /path/to/outputDirectory
+#  - By default, will use "./results" as the results output directory
+#    To set a results output directory:
+#      ./multirun.sh -r ./path/to/directory
 #
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="4.8"
+VERSION="4.9"
 URL="https://github.com/attogram/ollama-multirun"
 
 echo; echo "$NAME v$VERSION"; echo
@@ -390,6 +390,7 @@ function setModelInfo {
 }
 
 function createModelsOverviewHtml {
+  # list of models used in current run
   modelsIndexHtml="$outputDirectory/models.html"
   echo "Creating: $modelsIndexHtml"
   {
@@ -409,6 +410,7 @@ function createModelsOverviewHtml {
     <th>capabilities</th>
     <th class='left'>system prompt</th>
     <th>(raw)</th>
+    <th>(index)</th>
   </tr>
 EOF
   } > "$modelsIndexHtml"
@@ -427,6 +429,7 @@ EOF
       echo "<td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
       echo "<td class='left'>$modelSystemPrompt</td>"
       echo "<td><a href='./$(safeString "$model").info.txt'>raw</a></td>"
+      echo "<td><a href='../models.html#$(safeString "$model")'>index</a></td>"
       echo "</tr>"
     } >> "$modelsIndexHtml"
   done
@@ -539,7 +542,7 @@ function finishOutputIndexHtml {
   } >> "$outputIndexHtml"
 
   imagesHtml=$(showImages)
-  sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" $outputIndexHtml
+  sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml"
 }
 
 function createMainIndexHtml {
@@ -548,15 +551,69 @@ function createMainIndexHtml {
   {
     showHeader "$NAME: results"
     echo "<header><p><b>$NAME</b></p></header>"
-    echo "<ul>"
+    echo "<p><a href='models.html'>Models Index</a></p>"
+    echo "<p>Runs:<ul>"
     for dir in "$resultsDirectory"/*; do
       if [ -d "$dir" ]; then
         echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
       fi
     done
-    echo "</ul>"
+    echo "</ul></p>"
     showFooter
   } > $resultsIndexFile
+}
+
+function createMainModelIndexHtml {
+  # create table of contents: list all models used in all run results, and links to every individual model run
+  modelsFound=()
+  modelsIndex=()
+
+  for dir in "$resultsDirectory"/*; do # for each item in main results directory
+    if [ -d "$dir" ]; then # if is a directory
+      for file in "$dir"/*.html; do # for each *.html file in the directory
+        if [[ $file != *"/index.html" && $file != *"/models.html" ]]; then # skip index.html and models.html
+          fileName="${file##*/}"
+          modelName="${fileName%.html}" # remove .html to get model name
+          if [[ ! "${modelsFound[@]}" =~ "$modelName" ]]; then
+            modelsFound+=("$modelName")
+          fi
+          modelsIndex+=("$modelName:$dir/$fileName")
+        fi
+      done
+    fi  
+  done
+
+  mainModelIndexHtml="$resultsDirectory/models.html"
+  echo "Creating: $mainModelIndexHtml"
+  {
+    showHeader "$NAME: Model Run Index"
+    echo "<header><b><a href='index.html'>$NAME</a></b>: Model Run Index</header>"
+
+    echo '<p>Models: '
+    for foundModel in "${modelsFound[@]}"; do
+      echo "<a href='#$foundModel'>$foundModel</a> "
+    done
+    echo '</p>'
+
+    echo "<ul>"
+    for foundModel in "${modelsFound[@]}"; do
+      echo " <li id='$foundModel'>$foundModel</li>"
+      echo "  <ul>"
+      for modelIndex in "${modelsIndex[@]}"; do
+        modelName=${modelIndex%%:*} # get everything before the :
+        if [ "$modelName" == "$foundModel" ]; then
+          run=${modelIndex#*:} # get everything after the :
+          runLink="${run#$resultsDirectory/}" # remove the results directory from beginning
+          runName="${runLink%/*}" # remove everything after last slash including the slash
+          echo "   <li><a href='$runLink'>$runName</a></li>"
+        fi
+      done
+      echo '  </ul>'
+    done
+    echo "</ul>"
+    echo "<p><a href='./models.html'>top</a></p>"
+    showFooter
+  } > "$mainModelIndexHtml"
 }
 
 export OLLAMA_MAX_LOADED_MODELS=1
@@ -589,5 +646,6 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
 done
 
 finishOutputIndexHtml
+createMainModelIndexHtml
 
 echo; echo "Done: $outputDirectory/"
