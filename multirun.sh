@@ -19,11 +19,16 @@
 #    To set a results output directory:
 #      ./multirun.sh -r ./path/to/directory
 #
+#  - By default, will wait 5 minutes for models to respond.
+#    To set new timeout (in seconds):
+#      ./multirun.sh -t 30
+#
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.0"
+VERSION="5.1"
 URL="https://github.com/attogram/ollama-multirun"
+TIMEOUT="300" # number of seconds to allow model to respond
 
 echo; echo "$NAME v$VERSION"; echo
 
@@ -45,6 +50,15 @@ function parseCommandLine {
       -r) # specify results outputDirectory
         if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
           resultsDirectory=$2
+          shift 2
+        else
+          echo "Error: Argument for $1 is missing" >&2
+          exit 1
+        fi
+        ;;
+      -t) # specify timeout in seconds
+        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+          TIMEOUT=$2
           shift 2
         else
           echo "Error: Argument for $1 is missing" >&2
@@ -621,6 +635,34 @@ function createMainModelIndexHtml {
   } > "$mainModelIndexHtml"
 }
 
+function runModelWithTimeout {
+  ollama run --verbose "${model}" -- "${prompt}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
+  pid=$!
+  (
+    sleep $TIMEOUT
+    if kill -0 $pid 2>/dev/null; then
+      echo
+      echo "[ERROR: Session Timeout after ${TIMEOUT} seconds]" > "${modelOutputTxt}"
+      kill $pid 2>/dev/null
+    fi
+
+  ) &
+  timeout_pid=$!
+
+  # Wait for the main process to complete
+  if wait $pid 2>/dev/null; then
+    # Main process completed successfully, kill the timeout process
+    if kill -0 $timeout_pid 2>/dev/null; then
+      kill $timeout_pid 2>/dev/null
+      wait $timeout_pid 2>/dev/null  # Clean up the timeout process
+    fi
+  else
+    # Main process was killed (likely by timeout), wait for timeout process
+    wait $timeout_pid 2>/dev/null
+  fi
+
+}
+
 export OLLAMA_MAX_LOADED_MODELS=1
 
 parseCommandLine "$@"
@@ -634,6 +676,8 @@ createModelsOverviewHtml
 setSystemStats
 createOutputIndexHtml
 
+echo "Response Timeout: $TIMEOUT"
+
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
   echo; echo "Running model: $model"; echo
   clearModel "$model"
@@ -641,7 +685,7 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
   echo "Creating: $modelOutputTxt"
   echo "Creating: $modelStatsTxt"
-  ollama run --verbose "$model" -- "${prompt}" > "$modelOutputTxt" 2> "$modelStatsTxt"
+  runModelWithTimeout
   setSystemMemoryStats
   setOllamaStats
   setModelInfo
