@@ -121,7 +121,13 @@ Run the script from your terminal. The results will be saved in a new directory 
     ```bash
     ./multirun.sh "Describe this image: ./vision/image.jpg"
     ```
-    
+
+- **Specify response timeout:**
+    Use the -t option, with timeout specified in seconds
+    ```bash
+    ./multirun.sh -t 60
+    ```
+
 ### After Running
 
 Once the script finishes, 
