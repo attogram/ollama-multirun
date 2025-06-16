@@ -26,7 +26,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.1"
+VERSION="5.2"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
@@ -218,6 +218,8 @@ function clearModel {
     -c "expect \">>> \"" \
     -c 'send -- "/clear\n"' \
     -c "expect \"Cleared session context\"" \
+    -c 'send -- "/bye\n"' \
+    -c "expect eof" \
   ;
 }
 
@@ -311,9 +313,31 @@ function setSystemStats {
 }
 
 function setSystemMemoryStats {
-  top=$(top -l 1)
-  systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}') # Get system memory used
-  systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}') # Get system memory available
+  systemMemoryUsed="?"
+  systemMemoryAvail="?"
+  #echo "OS Type: $OSTYPE"
+  case "$OSTYPE" in
+    cygwin|msys)
+      #echo "OS Type match: cygwin|msys"
+      # TODO
+      ;;
+    darwin*)
+      #echo "OS Type match: darwin"
+      top=$(top -l 1 2>/dev/null || echo "")
+      if [ -n "$top" ]; then
+        systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}' || echo "N/A")
+        systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}' || echo "N/A")
+      fi
+      ;;
+    *)
+      #echo "OS Type match: *"
+      top=$(top -l 1 2>/dev/null || top -bn1 2>/dev/null || echo "")
+      if [ -n "$top" ]; then
+        systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}' || echo "N/A")
+        systemMemoryAvail=$(echo "$top" | awk '/PhysMem/ {print $6}' || echo "N/A")
+      fi
+      ;;
+  esac
 }
 
 function showSystemStats {
