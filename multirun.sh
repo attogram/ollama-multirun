@@ -26,7 +26,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.2"
+VERSION="5.3"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
@@ -489,8 +489,16 @@ function createModelOutputHtml {
     echo "</header>"
     showPrompt
     showImages
+
+    modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
+    if [ -f "$modelThinkingTxt" ]; then
+      echo "<p>Thinking: $model (<a href='./$(safeString "$model").thinking.txt'>raw</a>)<br />"
+      textarea "$(cat "$modelThinkingTxt")" 3 15 # 3 padding, max 15 lines
+      echo "</p>"
+    fi
+
     echo "<p>Output: $model (<a href='./$(safeString "$model").output.txt'>raw</a>)<br />"
-    textarea "$(cat "$modelOutputTxt")" 3 25 # 5 padding, max 30 lines
+    textarea "$(cat "$modelOutputTxt")" 3 25 # 3 padding, max 25 lines
     echo "</p>"
 
     echo "<div class='box'><table>"
@@ -687,6 +695,33 @@ function runModelWithTimeout {
 
 }
 
+function parseThinkingOutput {
+  local modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
+
+  # Check for either <think> tags or Thinking... patterns
+  if grep -q -E "(<think>|Thinking\.\.\.)" "$modelOutputTxt"; then
+    #echo "Found thinking content in $modelOutputTxt, extracting..."
+
+    # Read the entire file content
+    local content=$(cat "$modelOutputTxt")
+
+    # Extract thinking content
+    local thinkingContent=""
+    thinkingContent+=$(echo "$content" | sed -n '/<think>/,/<\/think>/p' | sed '1d;$d')
+    thinkingContent+=$(echo "$content" | sed -n '/Thinking\.\.\./,/\.\.\.done thinking\./p' | sed '1d;$d')
+
+    # Remove thinking content from original
+    content=$(echo "$content" | sed '/<think>/,/<\/think>/d')
+    content=$(echo "$content" | sed '/Thinking\.\.\./,/\.\.\.done thinking\./d')
+
+    echo "Creating: $modelThinkingTxt"
+    echo "$thinkingContent" > "$modelThinkingTxt"
+
+    echo "Updating: $modelOutputTxt"
+    echo "$content" > "$modelOutputTxt"
+  fi
+}
+
 export OLLAMA_MAX_LOADED_MODELS=1
 
 parseCommandLine "$@"
@@ -712,6 +747,7 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   runModelWithTimeout
   setSystemMemoryStats
   setOllamaStats
+  parseThinkingOutput
   setModelInfo
   setStats
   createModelOutputHtml
