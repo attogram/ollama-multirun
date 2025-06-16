@@ -143,16 +143,17 @@ ollama-multirun/
     ├── index.html          # Global index of all past runs
     ├── models.html         # Global index of all models, with links to past run results
     └── your_prompt_tag_YYYYMMDD-HHMMSS/ # A directory for each specific run
-        ├── index.html      # HTML summary page for this run
-        ├── models.html     # HTML models info summary
-        ├── prompt.txt      # The raw prompt used
-        ├── prompt_tag.prompt.yaml # Prompt in GitHub YAML format
-        ├── image.jpg       # If an image was included in the prompt, it will be saved here
-        ├── model1.html     # HTML page for model1's output and stats
-        ├── model1.output.txt  # Raw text output from model1
-        ├── model1.stats.txt   # Raw stats from model1
-        ├── model1.info.txt    # Raw info from model1
-        ├── model2.html        # ... and so on for each model
+        ├── index.html          # HTML summary page for this run
+        ├── models.html         # HTML models info summary
+        ├── prompt.txt          # The raw prompt used
+        ├── tag.prompt.yaml     # Prompt in GitHub YAML format
+        ├── image.jpg           # If an image was included in the prompt, it will be saved here
+        ├── model1.html         # HTML page for model1's output and stats
+        ├── model1.output.txt   # Raw text output from model1
+        ├── model1.thinking.txt # Raw thinking text output from model1 (for thinking models only)
+        ├── model1.stats.txt    # Raw stats from model1
+        ├── model1.info.txt     # Raw info from model1
+        ├── model2.html         # ... and so on for each model
         └── ...
 ```
 
