@@ -26,7 +26,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.3"
+VERSION="5.4"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
@@ -213,14 +213,21 @@ function textarea() {
 }
 
 function clearModel {
-  expect \
+  echo "Clearing model session: $model"
+  (
+    expect \
     -c "spawn ollama run $1" \
     -c "expect \">>> \"" \
     -c 'send -- "/clear\n"' \
     -c "expect \"Cleared session context\"" \
     -c 'send -- "/bye\n"' \
     -c "expect eof" \
-  ;
+    ;
+  ) > /dev/null 2>&1 # Suppress output
+  if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to clear model session: $model" >&2
+    # exit 1
+  fi
 }
 
 function showHeader {
