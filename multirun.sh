@@ -26,7 +26,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.4"
+VERSION="5.5"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
@@ -260,7 +260,7 @@ function showFooter {
   echo "<br /><br />"
   echo "<footer>"
   echo "<p>$title</p>"
-  echo "<p>page created:   $(date '+%Y-%m-%d %H:%M:%S')</p>"
+  echo "<p>Page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
   echo "<p>Generated with: <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p>"
   echo "</footer></body></html>"
 }
@@ -598,7 +598,7 @@ function finishOutputIndexHtml {
   } >> "$outputIndexHtml"
 
   imagesHtml=$(showImages)
-  sed -i -e "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml"
+  sed -i '' -e "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml"
 }
 
 function createMainIndexHtml {
