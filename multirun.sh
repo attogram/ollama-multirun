@@ -26,7 +26,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.5"
+VERSION="5.6"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
@@ -326,7 +326,28 @@ function setSystemMemoryStats {
   case "$OSTYPE" in
     cygwin|msys)
       #echo "OS Type match: cygwin|msys"
-      # TODO
+      if command -v wmic >/dev/null 2>&1; then
+        local totalMemKB=$(wmic OS get TotalVisibleMemorySize /value 2>/dev/null | grep -E "^TotalVisibleMemorySize=" | cut -d'=' -f2 | tr -d '\r')
+        local availMemKB=$(wmic OS get FreePhysicalMemory /value 2>/dev/null | grep -E "^FreePhysicalMemory=" | cut -d'=' -f2 | tr -d '\r')
+        if [ -n "$totalMemKB" ] && [ -n "$availMemKB" ]; then
+          local usedMemKB=$((totalMemKB - availMemKB))
+          # Convert KB to human readable format (approximate)
+          if [ $usedMemKB -gt 1048576 ]; then
+            systemMemoryUsed="$((usedMemKB / 1048576))G"
+          elif [ $usedMemKB -gt 1024 ]; then
+            systemMemoryUsed="$((usedMemKB / 1024))M"
+          else
+            systemMemoryUsed="${usedMemKB}K"
+          fi
+          if [ $availMemKB -gt 1048576 ]; then
+            systemMemoryAvail="$((availMemKB / 1048576))G"
+          elif [ $availMemKB -gt 1024 ]; then
+            systemMemoryAvail="$((availMemKB / 1024))M"
+          else
+            systemMemoryAvail="${availMemKB}K"
+          fi
+        fi
+      fi
       ;;
     darwin*)
       #echo "OS Type match: darwin"
