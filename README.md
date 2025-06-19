@@ -181,7 +181,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 * The open-source community for inspiration and tools.
 
 ## Other Attogram Projects
-* [llm-council](https://github.com/attogram/llm-council) - A bash script to start a chat between 2 or more LLMs running on ollama
+* [llm-council](https://github.com/attogram/llm-council) - A bash script to start a chat room between all, or some, of your models running on ollama.
 * [small-models](https://github.com/attogram/small-models) - Comparison of small open source LLMs
 * [AI Test Zone](https://github.com/attogram/ai_test_zone) - Demos hosted on https://attogram.github.io/ai_test_zone/
 
