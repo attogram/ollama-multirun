@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # ollama-multirun
 #
@@ -26,7 +26,7 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.6"
+VERSION="5.7"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
@@ -172,24 +172,6 @@ model: ''
 EOF
 }
 
-function showPrompt {
-  echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
-  echo "  words:$promptWords  bytes:$promptBytes<br />"
-  textarea "$prompt" 0 10 # 0 padding, max 10 lines
-  echo "</p>"
-}
-
-function showImages {
-  if [ -n "$addedImages" ]; then
-    for image in ${addedImages}; do
-      echo -n "<div class='box'>"
-      echo -n "<a target='image' href='$(basename $image)'><img src='$(basename $image)' alt='$image' width='250' /></a>"
-      echo -n "</div>"
-    done
-    echo -n "<br />"
-  fi
-}
-
 function textarea() {
   local content="$1" # Get the input
   if [ -z "$content" ]; then
@@ -211,6 +193,25 @@ function textarea() {
   content=$(echo "$content" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g') # Escape HTML special characters
   echo "<textarea readonly rows='$lines'>${content}</textarea>"
 }
+
+function showPrompt {
+  echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
+  echo "  words:$promptWords  bytes:$promptBytes<br />"
+  textarea "$prompt" 2 10 # 0 padding, max 10 lines
+  echo "</p>"
+}
+
+function showImages {
+  if [ -n "$addedImages" ]; then
+    for image in ${addedImages}; do
+      echo -n "<div class='box'>"
+      echo -n "<a target='image' href='$(basename $image)'><img src='$(basename $image)' alt='$image' width='250' /></a>"
+      echo -n "</div>"
+    done
+    echo -n "<br />"
+  fi
+}
+
 
 function clearModel {
   echo "Clearing model session: $model"

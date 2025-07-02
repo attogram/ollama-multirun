@@ -1,0 +1,49 @@
+Help me a write Bash function to parse data from this model.info.txt file:
+
+- in the Model section, each line is in format "name    value"
+  - for each line, save as bash variable: name="$value" 
+  - example:  line "architecture        granite" parses to: architecture="granite"
+ 
+- in the Capabilities section, each line is a single keyword
+  - save all the keywords into a bash array
+
+- in the System section, single or multiple lines showing the system prompt
+  - save as var $systemPrompt
+
+- In the Parameters section (has same format as Model section)
+  - only save the 'temperature' value
+
+- Allow that any section or any line may be missing
+
+example model.info.txt contents:
+
+  Model
+    architecture        granite    
+    parameters          2.5B       
+    context length      16384      
+    embedding length    2048       
+    quantization        Q4_K_M     
+
+  Capabilities
+    completion    
+    tools         
+    vision        
+
+  Projector
+    architecture        clip       
+    parameters          441.86M    
+    embedding length    1152       
+    dimensions          0          
+
+  Parameters
+    num_ctx        16384    
+    temperature    0        
+
+  System
+    A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful,    
+      detailed, and polite answers to the user's questions.                                                   
+
+  License
+    Apache License               
+    Version 2.0, January 2004    
+    ...

@@ -1,0 +1,1 @@
+Write a python function to take in an array and output a html list of the array contents

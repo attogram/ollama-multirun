@@ -1,0 +1,3 @@
+- Socrates is a human.
+- All humans are mortal.
+- Is Socrates mortal?
