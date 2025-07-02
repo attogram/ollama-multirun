@@ -1,11 +1,11 @@
 Help me a write a PHP function to parse data from this model.info.txt file:
 
 - in the Model section, each line is in format "name    value"
-  - for each line, save as bash variable: name="$value" 
+  - for each line, save as a PHP variable: name="$value" 
   - example:  line "architecture        granite" parses to: architecture="granite"
  
 - in the Capabilities section, each line is a single keyword
-  - save all the keywords into a bash array
+  - save all the keywords into a PHP array
 
 - in the System section, single or multiple lines showing the system prompt
   - save as var $systemPrompt
