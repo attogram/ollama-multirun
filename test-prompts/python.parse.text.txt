@@ -1,4 +1,4 @@
-Help me a write a Python function to parse data from this model.info.txt file:
+Help me write a Python function to parse data from this model.info.txt file:
 
 - in the Model section, each line is in format "name    value"
   - for each line, save as bash variable: name="$value" 
