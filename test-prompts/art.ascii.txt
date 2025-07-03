@@ -1,0 +1,23 @@
+Let's make some ASCII art!
+Show me your ascii art.
+Here is an example to get you started: an ascii rabbit:
+
+         ,
+        /|      __
+       / |   ,-~ /
+      Y :|  //  /
+      | jj /( .^
+      >-"~"-v"
+     /       Y
+    jo  o    |
+   ( ~T~     j
+    >._-' _./
+   /   "~"  |
+  Y     _,  |
+ /| ;-"~ _  l
+/ l/ ,-"~    \
+\//\/      .- \
+ Y        /    Y
+ l       I     !
+ ]\      _\    /"\
+(" ~----( ~   Y.  )
