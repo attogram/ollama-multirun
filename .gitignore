@@ -1,1 +1,4 @@
 results/
+local/
+.DS_store
+.idea
