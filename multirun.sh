@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# ollama-multirun
+# Ollama Multirun
 #
-# Bash shell script to run a prompt against all models in ollama, and save the output as web pages
+# Bash shell script to run a prompt against all models in Ollama, and save the output as web pages
 #
 # Usage:
 #  - Enter prompt manually:    ./multirun.sh
@@ -22,13 +22,27 @@
 #  - By default, will wait 5 minutes for models to respond.
 #    To set new timeout (in seconds):
 #      ./multirun.sh -t 30
-#
-# Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.8"
+VERSION="5.9"
 URL="https://github.com/attogram/ollama-multirun"
+
 TIMEOUT="300" # number of seconds to allow model to respond
+
+usage() {
+  me=$(basename "$0")
+  echo "$NAME"; echo
+  echo "Usage:"
+  echo "  ./$me [flags]"
+  echo "  ./$me [flags] [prompt]"
+  echo; echo "Flags:";
+  echo "  -h       -- Help for $NAME"
+  echo "  -m model1,model2  -- Use specific models (comma separated list)"
+  echo "  -r <dir> -- Set results directory"
+  echo "  -t #     -- Set timeout, in seconds"
+  echo "  -v       -- Show version information"
+  echo "  [prompt] -- Set the prompt (\"Example prompt\")"
+}
 
 parseCommandLine() {
   modelsList=""
@@ -36,6 +50,10 @@ parseCommandLine() {
   prompt=""
   while (( "$#" )); do
     case "$1" in
+      -h)
+        usage
+        exit 0
+        ;;
       -m) # specify models to run
         if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
           modelsList=$2
@@ -62,6 +80,10 @@ parseCommandLine() {
           echo "Error: Argument for $1 is missing" >&2
           exit 1
         fi
+        ;;
+      -v)
+        echo "$NAME v$VERSION"
+        exit 0
         ;;
       -*|--*=) # unsupported flags
         echo "Error: unsupported argument: $1" >&2
@@ -369,8 +391,8 @@ setSystemMemoryStats() {
 showSystemStats() {
   echo "<div class='box'><table>"
   echo "<tr><td class='left' colspan='2'>System</td></tr>"
-  echo "<tr><td class='left'>ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
-  echo "<tr><td class='left'>ollama version</td><td class='left'>$ollamaVersion</td></tr>"
+  echo "<tr><td class='left'>Ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
+  echo "<tr><td class='left'>Ollama version</td><td class='left'>$ollamaVersion</td></tr>"
   echo "<tr><td class='left'>sys arch</td><td class='left'>$systemArch</td></tr>"
   echo "<tr><td class='left'>sys processor</td><td class='left'>$systemProcessor</td></tr>"
   echo "<tr><td class='left'>sys memory</td><td class='left'>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
