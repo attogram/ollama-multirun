@@ -26,13 +26,11 @@
 # Requires: ollama, bash, expect, awk, basename, date, grep, mkdir, sed, sort, top, tr, uname, wc
 
 NAME="ollama-multirun"
-VERSION="5.7"
+VERSION="5.8"
 URL="https://github.com/attogram/ollama-multirun"
 TIMEOUT="300" # number of seconds to allow model to respond
 
-echo; echo "$NAME v$VERSION"; echo
-
-function parseCommandLine {
+parseCommandLine() {
   modelsList=""
   resultsDirectory="results"
   prompt=""
@@ -80,7 +78,7 @@ function parseCommandLine {
   eval set -- "$prompt"
 }
 
-function setModels {
+setModels() {
   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
   if [ -z "$models" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'" >&2
@@ -108,7 +106,7 @@ function setModels {
   echo
 }
 
-function safeString() {
+safeString() {
   local input="$1" # Get the input
   input=${input:0:50} # Truncate to first 50 characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
@@ -117,7 +115,7 @@ function safeString() {
   echo "$input" # Output the sanitized string
 }
 
-function createOutputDirectory {
+createOutputDirectory() {
   tag=$(safeString "$prompt")
   tagDatetime=$(date '+%Y%m%d-%H%M%S')
   outputDirectory="$resultsDirectory/${tag}_${tagDatetime}"
@@ -130,7 +128,7 @@ function createOutputDirectory {
   fi
 }
 
-function setPrompt {
+setPrompt() {
   if [ -n "$prompt" ]; then # if prompt is already set from command line
     return
   fi
@@ -144,7 +142,7 @@ function setPrompt {
   prompt=$(cat) # Read from standard input (pipe or file)
 }
 
-function savePrompt {
+savePrompt() {
   echo; echo "Prompt:"; echo "$prompt"; echo
 
   promptFile="$outputDirectory/prompt.txt"
@@ -159,7 +157,7 @@ function savePrompt {
   generatePromptYaml > "$promptYamlFile"
 }
 
-function generatePromptYaml {
+generatePromptYaml() {
   # Github Prompt YAML: https://docs.github.com/en/github-models/use-github-models/storing-prompts-in-github-repositories
   cat << EOF
 messages:
@@ -172,7 +170,7 @@ model: ''
 EOF
 }
 
-function textarea() {
+textarea() {
   local content="$1" # Get the input
   if [ -z "$content" ]; then
     content=""
@@ -194,14 +192,14 @@ function textarea() {
   echo "<textarea readonly rows='$lines'>${content}</textarea>"
 }
 
-function showPrompt {
+showPrompt() {
   echo "<p>Prompt: (<a href='./prompt.txt'>raw</a>) (<a href='./${tag}.prompt.yaml'>yaml</a>)"
   echo "  words:$promptWords  bytes:$promptBytes<br />"
   textarea "$prompt" 2 10 # 0 padding, max 10 lines
   echo "</p>"
 }
 
-function showImages {
+showImages() {
   if [ -n "$addedImages" ]; then
     for image in ${addedImages}; do
       echo -n "<div class='box'>"
@@ -212,8 +210,7 @@ function showImages {
   fi
 }
 
-
-function clearModel {
+clearModel() {
   echo "Clearing model session: $model"
   (
     expect \
@@ -231,7 +228,7 @@ function clearModel {
   fi
 }
 
-function showHeader {
+showHeader() {
   title="$1"
   cat << "EOF"
   <!DOCTYPE html>
@@ -256,7 +253,7 @@ EOF
   echo "<title>$title</title></head><body>"
 }
 
-function showFooter {
+showFooter() {
   title="$1"
   echo "<br /><br />"
   echo "<footer>"
@@ -266,7 +263,7 @@ function showFooter {
   echo "</footer></body></html>"
 }
 
-function createMenu {
+createMenu() {
   local currentModel="$1"
   echo "<span class='menu'>"
   echo "<a href='models.html'>models</a>: "
@@ -280,7 +277,7 @@ function createMenu {
   echo '</span>';
 }
 
-function setStats {
+setStats() {
   statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
   statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
   statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $4, $5 }')
@@ -304,7 +301,7 @@ function setStats {
   responseBytes=$(wc -c < "$modelOutputTxt" | awk '{print $1}')
 }
 
-function setOllamaStats {
+setOllamaStats() {
   ollamaVersion=$(ollama -v | awk '{print $4}')
   ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6}' | sed '1d') # Get the first 6 columns of ollama ps output, skipping the header
   ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
@@ -312,7 +309,7 @@ function setOllamaStats {
   ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
 }
 
-function setSystemStats {
+setSystemStats() {
   systemArch=$(uname -m) # Get hardware platform
   systemProcessor=$(uname -p) # Get system processor
   systemOSName=$(uname -s) # Get system OS name
@@ -320,7 +317,7 @@ function setSystemStats {
   setSystemMemoryStats
 }
 
-function setSystemMemoryStats {
+setSystemMemoryStats() {
   systemMemoryUsed="?"
   systemMemoryAvail="?"
   #echo "OS Type: $OSTYPE"
@@ -369,7 +366,7 @@ function setSystemMemoryStats {
   esac
 }
 
-function showSystemStats {
+showSystemStats() {
   echo "<div class='box'><table>"
   echo "<tr><td class='left' colspan='2'>System</td></tr>"
   echo "<tr><td class='left'>ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
@@ -381,7 +378,7 @@ function showSystemStats {
   echo "</table></div>"
 }
 
-function createModelInfoTxt { # Create model info files - for each model, do 'ollama show' and save the results to text file
+createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
     modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
     echo "Creating: $modelInfoTxt"
@@ -389,7 +386,7 @@ function createModelInfoTxt { # Create model info files - for each model, do 'ol
   done
 }
 
-function setModelInfo {
+setModelInfo() {
   modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
   modelCapabilities=()
   modelSystemPrompt=""
@@ -455,7 +452,7 @@ function setModelInfo {
   done < "$modelInfoTxt"
 }
 
-function createModelsOverviewHtml {
+createModelsOverviewHtml() {
   # list of models used in current run
   modelsIndexHtml="$outputDirectory/models.html"
   echo "Creating: $modelsIndexHtml"
@@ -507,7 +504,7 @@ EOF
   } >> "$modelsIndexHtml"
 }
 
-function createModelOutputHtml {
+createModelOutputHtml() {
   modelHtmlFile="$outputDirectory/$(safeString "$model").html"
   echo "Creating: $modelHtmlFile"
   {
@@ -562,7 +559,7 @@ function createModelOutputHtml {
   } > "$modelHtmlFile"
 }
 
-function createOutputIndexHtml {
+createOutputIndexHtml() {
   outputIndexHtml="$outputDirectory/index.html"
   echo "Creating: $outputIndexHtml"
   {
@@ -592,7 +589,7 @@ EOF
   } > "$outputIndexHtml"
 }
 
-function addModelToOutputIndexHtml {
+addModelToOutputIndexHtml() {
   (
     echo "<tr>"
     echo "<td class='left'><a href='./$(safeString "$model").html'>$model</a></td>"
@@ -610,7 +607,7 @@ function addModelToOutputIndexHtml {
   ) >> "$outputIndexHtml"
 }
 
-function finishOutputIndexHtml {
+finishOutputIndexHtml() {
   {
     echo "</table>"
     echo "<br /><br />"
@@ -623,7 +620,7 @@ function finishOutputIndexHtml {
   sed -i '' -e "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml"
 }
 
-function createMainIndexHtml {
+createMainIndexHtml() {
   resultsIndexFile="${resultsDirectory}/index.html"
   echo "Creating: $resultsIndexFile"
   {
@@ -642,7 +639,7 @@ function createMainIndexHtml {
   } > $resultsIndexFile
 }
 
-function createMainModelIndexHtml {
+createMainModelIndexHtml() {
   # create table of contents: list all models used in all run results, and links to every individual model run
   modelsFound=()
   modelsIndex=()
@@ -696,7 +693,7 @@ function createMainModelIndexHtml {
   } > "$mainModelIndexHtml"
 }
 
-function runModelWithTimeout {
+runModelWithTimeout() {
   ollama run --verbose "${model}" -- "${prompt}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
   pid=$!
   (
@@ -724,7 +721,7 @@ function runModelWithTimeout {
 
 }
 
-function parseThinkingOutput {
+parseThinkingOutput() {
   local modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
 
   # Check for either <think> tags or Thinking... patterns
@@ -754,6 +751,7 @@ function parseThinkingOutput {
 export OLLAMA_MAX_LOADED_MODELS=1
 
 parseCommandLine "$@"
+echo; echo "$NAME v$VERSION"; echo
 setModels
 setPrompt
 createOutputDirectory
@@ -763,9 +761,7 @@ createModelInfoTxt
 createModelsOverviewHtml
 setSystemStats
 createOutputIndexHtml
-
 echo "Response Timeout: $TIMEOUT"
-
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
   echo; echo "Running model: $model"; echo
   clearModel "$model"
@@ -782,8 +778,6 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   createModelOutputHtml
   addModelToOutputIndexHtml
 done
-
 finishOutputIndexHtml
 createMainModelIndexHtml
-
 echo; echo "Done: $outputDirectory/"
