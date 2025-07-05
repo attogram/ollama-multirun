@@ -1,0 +1,4 @@
+Identify faces in image: ./docs/logo/logo-250.jpg
+Find faces of people or animals
+Tell the bounding box dimensions: top left x,y and bottom right x,y
+Respond in JSON format

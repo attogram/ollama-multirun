@@ -1,0 +1,2 @@
+Generate keywords for this image: ./docs/logo/logo-250.jpg
+Respond in JSON format
