@@ -2,4 +2,15 @@
 
 Some test prompts to test Ollama Multirun.
 
-./run.test.prompt.sh - Multirun on all *.txt files in this directory
+## Run Test Prompts script
+
+Run all *.txt files in a directory with multirun:
+
+```./run.test.prompt.sh directory```
+
+examples:
+- ```./run.test.prompt.sh code```
+- ```./run.test.prompt.sh general```
+- ```./run.test.prompt.sh logic```
+- ```./run.test.prompt.sh security```
+- ```./run.test.prompt.sh vision```
