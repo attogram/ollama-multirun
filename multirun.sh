@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.9"
+VERSION="5.10"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -130,10 +130,10 @@ setModels() {
 
 safeString() {
   local input="$1" # Get the input
-  input=${input:0:50} # Truncate to first 50 characters
+  input=${input:0:42} # Truncate to first 42 characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
   input=$(echo "$input" | sed "s/ /_/g") # Replace spaces with underscores
-  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_')
+  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_') # Replace non-allowed characters with underscores
   echo "$input" # Output the sanitized string
 }
 
