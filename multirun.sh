@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.12"
+VERSION="5.13"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -233,7 +233,7 @@ showImages() {
 }
 
 clearModel() {
-  echo "Clearing model session: $model"
+  echo "Clearing model session: $1"
   (
     expect \
     -c "spawn ollama run $1" \
@@ -245,7 +245,16 @@ clearModel() {
     ;
   ) > /dev/null 2>&1 # Suppress output
   if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clear model session: $model" >&2
+    echo "ERROR: Failed to clear model session: $1" >&2
+    # exit 1
+  fi
+}
+
+stopModel() {
+  echo "Stopping model: $1"
+  ollama stop "$1"
+  if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to stop model: $1" >&2
     # exit 1
   fi
 }
@@ -803,6 +812,7 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   setStats
   createModelOutputHtml
   addModelToOutputIndexHtml
+  stopModel "$model"
 done
 finishOutputIndexHtml
 createMainModelIndexHtml
