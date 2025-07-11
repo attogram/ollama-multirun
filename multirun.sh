@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.10"
+VERSION="5.11"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -565,7 +565,7 @@ createModelOutputHtml() {
 
     echo "<div class='box'><table>"
     echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeString "$model").info.txt'>raw</a>)</td></tr>"
-    echo "<tr><td class='left'>name</td><td class='left'><a target='ollama' href='https://ollama.com/library/${model}'>$model</a></td></tr>"
+    echo "<tr><td class='left'>name</td><td class='left'><a href='../models.html#$(safeString "$model")'>$model</a></td></tr>"
     echo "<tr><td class='left'>architecture</td><td class='left'>$modelArchitecture</td></tr>"
     echo "<tr><td class='left'>size</td><td class='left'>$ollamaSize</td></tr>"
     echo "<tr><td class='left'>parameters</td><td class='left'>$modelParameters</td></tr>"
