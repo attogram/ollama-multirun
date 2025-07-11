@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.11"
+VERSION="5.12"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -325,10 +325,12 @@ setStats() {
 
 setOllamaStats() {
   ollamaVersion=$(ollama -v | awk '{print $4}')
-  ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6}' | sed '1d') # Get the first 6 columns of ollama ps output, skipping the header
+  # ps columns: 1:NAME, 2:ID, 3:SIZE_NUM 4:SIZE_GB, 5:PROCESSOR_% 6:PROCESS_TYPE, 7:CONTEXT, 8:UNTIL
+  ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6, $7}' | sed '1d') # Get columns from ollama ps output, skipping the header
   ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
-  ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
   ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
+  ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
+  ollamaContext=$(echo "$ollamaPs" | awk '{print $7}') # Get the context size
 }
 
 setSystemStats() {
@@ -392,6 +394,7 @@ showSystemStats() {
   echo "<div class='box'><table>"
   echo "<tr><td class='left' colspan='2'>System</td></tr>"
   echo "<tr><td class='left'>Ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
+  echo "<tr><td class='left'>Ollama context</td><td class='left'>$ollamaContext</td></tr>"
   echo "<tr><td class='left'>Ollama version</td><td class='left'>$ollamaVersion</td></tr>"
   echo "<tr><td class='left'>sys arch</td><td class='left'>$systemArch</td></tr>"
   echo "<tr><td class='left'>sys processor</td><td class='left'>$systemProcessor</td></tr>"
@@ -651,7 +654,8 @@ createMainIndexHtml() {
     echo "<header>$titleLink</header>"
     echo "<p><a href='models.html'>Models Index</a></p>"
     echo "<p>Runs:<ul>"
-    for dir in "$resultsDirectory"/*; do
+    #for dir in "$resultsDirectory"/*; do
+    for dir in $(printf '%s\n' "$resultsDirectory"/* | sort -t - -k2 -k1 --reverse); do
       if [ -d "$dir" ]; then
         echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
       fi
