@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.16"
+VERSION="5.17"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -261,6 +261,20 @@ stopModel() {
     echo "ERROR: Failed to stop model: $1" >&2
     # exit 1
   fi
+}
+
+showSortableTablesJavascript() {
+    # From: https://github.com/tofsjonas/sortable/
+    # License: The Unlicense - https://github.com/tofsjonas/sortable/blob/main/LICENSE
+  echo '<style>
+.sortable thead th:not(.no-sort){cursor:pointer}.sortable thead th:not(.no-sort)::after,.sortable thead th:not(.no-sort)::before{transition:color .1s ease-in-out;font-size:1.2em;color:rgba(0,0,0,0)}.sortable thead th:not(.no-sort)::after{margin-left:3px;content:"▸"}.sortable thead th:not(.no-sort):hover::after{color:inherit}.sortable thead th:not(.no-sort)[aria-sort=descending]::after{color:inherit;content:"▾"}.sortable thead th:not(.no-sort)[aria-sort=ascending]::after{color:inherit;content:"▴"}.sortable thead th:not(.no-sort).indicator-left::after{content:""}.sortable thead th:not(.no-sort).indicator-left::before{margin-right:3px;content:"▸"}.sortable thead th:not(.no-sort).indicator-left:hover::before{color:inherit}.sortable thead th:not(.no-sort).indicator-left[aria-sort=descending]::before{color:inherit;content:"▾"}.sortable thead th:not(.no-sort).indicator-left[aria-sort=ascending]::before{color:inherit;content:"▴"}.sortable{--stripe-color: #e4e4e4;--th-color: #fff;--th-bg: #808080;--td-color: #000;--td-on-stripe-color: #000;border-spacing:0}.sortable.sticky thead th{position:sticky;top:0;z-index:1}.sortable tbody tr:nth-child(odd){background-color:var(--stripe-color);color:var(--td-on-stripe-color)}.sortable thead th{background:var(--th-bg);color:var(--th-color);font-weight:normal;text-align:left;text-transform:capitalize;vertical-align:baseline;white-space:nowrap}.sortable td{color:var(--td-color)}.sortable td,.sortable th{padding:10px}.sortable td:first-child,.sortable th:first-child{border-top-left-radius:4px}.sortable td:last-child,.sortable th:last-child{border-top-right-radius:4px}
+</style>'
+  echo '<script>
+function sortSortable(a,m){function n(b){if(b){if(m&&b.dataset.sortAlt)return b.dataset.sortAlt;if(b.dataset.sort)return b.dataset.sort;if(b.textContent)return b.textContent}return""}a.dispatchEvent(new Event("sort-start",{bubbles:!0}));for(var c=a.tHead.querySelector("th[aria-sort]"),k=a.tHead.children[0],p="ascending"===c.getAttribute("aria-sort"),f=a.classList.contains("n-last"),e=function(b,q,d){var g=n(q.cells[d]),r=n(b.cells[d]);if(f){if(""===g&&""!==r)return-1;if(""===r&&""!==g)return 1}var u=
++g-+r;g=isNaN(u)?g.localeCompare(r):u;return 0===g&&k.cells[d]&&k.cells[d].hasAttribute("data-sort-tbr")?e(b,q,+k.cells[d].dataset.sortTbr):p?-g:g},h=0;h<a.tBodies.length;h++){var l=a.tBodies[h],v=[].slice.call(l.rows,0);v.sort(function(b,q){var d;return e(b,q,+(null!==(d=c.dataset.sortCol)&&void 0!==d?d:c.cellIndex))});var t=l.cloneNode();t.append.apply(t,v);a.replaceChild(t,l)}a.dispatchEvent(new Event("sort-end",{bubbles:!0}))}
+function sortableEventListener(a){function m(h,l){return h.nodeName===l?h:m(h.parentNode,l)}try{var n=a.shiftKey||a.altKey,c=m(a.target,"TH"),k=c.parentNode,p=k.parentNode,f=p.parentNode;if("THEAD"===p.nodeName&&f.classList.contains("sortable")&&!c.classList.contains("no-sort")){var e=k.cells;for(a=0;a<e.length;a++)e[a]!==c&&e[a].removeAttribute("aria-sort");e="descending";if("descending"===c.getAttribute("aria-sort")||f.classList.contains("asc")&&"ascending"!==c.getAttribute("aria-sort"))e="ascending";
+c.setAttribute("aria-sort",e);f.dataset.timer&&clearTimeout(+f.dataset.timer);f.dataset.timer=setTimeout(function(){sortSortable(f,n)},1).toString()}}catch(h){}}document.addEventListener("click",sortableEventListener);
+</script>'
 }
 
 showHeader() {
@@ -501,20 +515,22 @@ createModelsOverviewHtml() {
     echo "<header>$titleLink</header>"
     cat <<- EOF
 <br />
-<table>
-  <tr>
-    <th class='left'>model</th>
-    <th>architecture</th>
-    <th>parameters</th>
-    <th>context<br />length</th>
-    <th>embedding<br />length</th>
-    <th>quantization</th>
-    <th>temperature</th>
-    <th>capabilities</th>
-    <th class='left'>system prompt</th>
-    <th>(raw)</th>
-    <th>(index)</th>
-  </tr>
+<table class="sortable">
+  <thead>
+    <tr>
+      <th class='left'>model</th>
+      <th>architecture</th>
+      <th>parameters</th>
+      <th>context<br />length</th>
+      <th>embedding<br />length</th>
+      <th>quantization</th>
+      <th>temperature</th>
+      <th>capabilities</th>
+      <th class='left'>system prompt</th>
+      <th>(raw)</th>
+      <th>(index)</th>
+    </tr>
+  </thead>
 EOF
   } > "$modelsIndexHtml"
 
@@ -539,6 +555,7 @@ EOF
 
   {
     echo "</table>"
+    showSortableTablesJavascript
     showFooter "$titleLink"
   } >> "$modelsIndexHtml"
 }
@@ -610,20 +627,22 @@ createOutputIndexHtml() {
     showPrompt
     echo "<!-- IMAGES -->"
     cat <<- "EOF"
-<table>
-  <tr>
-    <th class='left'>model</th>
-    <th>words</th>
-    <th>bytes</th>
-    <th>total<br />duration</th>
-    <th>load<br />duration</th>
-    <th>prompt eval<br />count</th>
-    <th>prompt eval<br />duration</th>
-    <th>prompt eval<br />rate</th>
-    <th>eval<br />count</th>
-    <th>eval<br />duration</th>
-    <th>eval<br />rate</th>
-  </tr>
+<table class="sortable">
+  <thead>
+    <tr>
+      <th class='left'>model</th>
+      <th>words</th>
+      <th>bytes</th>
+      <th>total<br />duration</th>
+      <th>load<br />duration</th>
+      <th>prompt eval<br />count</th>
+      <th>prompt eval<br />duration</th>
+      <th>prompt eval<br />rate</th>
+      <th>eval<br />count</th>
+      <th>eval<br />duration</th>
+      <th>eval<br />rate</th>
+    </tr>
+  </thead>
 EOF
   } > "$outputIndexHtml"
 }
@@ -651,6 +670,7 @@ finishOutputIndexHtml() {
     echo "</table>"
     echo "<br /><br />"
     showSystemStats
+    showSortableTablesJavascript
     titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
     showFooter "$titleLink"
   } >> "$outputIndexHtml"
