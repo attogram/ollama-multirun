@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.14"
+VERSION="5.15"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -172,14 +172,14 @@ savePrompt() {
   echo $(getDateTime) "Prompt: $prompt"
 
   promptFile="$outputDirectory/prompt.txt"
-  echo $(getDateTime) "Creating: $promptFile"
+  echo $(getDateTime) "Creating Prompt Text: $promptFile"
   echo "$prompt" > "$promptFile"
 
   promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
   promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
   promptYamlFile="$outputDirectory/$tag.prompt.yaml"
-  echo $(getDateTime) "Creating: $promptYamlFile"
+  echo $(getDateTime) "Creating Prompt Yaml: $promptYamlFile"
   generatePromptYaml > "$promptYamlFile"
 }
 
@@ -419,7 +419,7 @@ showSystemStats() {
 createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
     modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
-    echo $(getDateTime) "Creating: $modelInfoTxt"
+    echo $(getDateTime) "Creating Model Info Text: $modelInfoTxt"
     ollama show "$model" > "$modelInfoTxt"
   done
 }
@@ -493,7 +493,7 @@ setModelInfo() {
 createModelsOverviewHtml() {
   # list of models used in current run
   modelsIndexHtml="$outputDirectory/models.html"
-  echo $(getDateTime) "Creating: $modelsIndexHtml"
+  echo $(getDateTime) "Creating Models Index Page: $modelsIndexHtml"
   {
     showHeader "$NAME: models"
     titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime"
@@ -544,7 +544,7 @@ EOF
 
 createModelOutputHtml() {
   modelHtmlFile="$outputDirectory/$(safeString "$model").html"
-  echo $(getDateTime) "Creating: $modelHtmlFile"
+  echo $(getDateTime) "Creating Model Output Page: $modelHtmlFile"
   {
     showHeader "$NAME: $model"
     titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime"
@@ -599,7 +599,7 @@ createModelOutputHtml() {
 
 createOutputIndexHtml() {
   outputIndexHtml="$outputDirectory/index.html"
-  echo $(getDateTime) "Creating: $outputIndexHtml"
+  echo $(getDateTime) "Creating Output Index Page: $outputIndexHtml"
   {
     showHeader "$NAME: $tag"
     titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
@@ -658,17 +658,21 @@ finishOutputIndexHtml() {
   sed -i '' -e "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml"
 }
 
+getSortedResultsDirectories() {
+  # Sort directories by datetime at end of directory name
+  echo $(ls -d "$resultsDirectory"/* | awk 'match($0, /[0-9]{8}-[0-9]{6}$/) { print $0, substr($0, RSTART, RLENGTH) }' | sort -k2 -r | cut -d' ' -f1)
+}
+
 createMainIndexHtml() {
   resultsIndexFile="${resultsDirectory}/index.html"
-  echo $(getDateTime) "Creating: $resultsIndexFile"
+  echo $(getDateTime) "Creating Main Index Page: $resultsIndexFile"
   {
     showHeader "$NAME: results"
     titleLink="<b>$NAME</b>"
     echo "<header>$titleLink</header>"
     echo "<p><a href='models.html'>Models Index</a></p>"
     echo "<p>Runs:<ul>"
-    #for dir in "$resultsDirectory"/*; do
-    for dir in $(printf '%s\n' "$resultsDirectory"/* | sort -t - -k2 -k1 --reverse); do
+    for dir in $(getSortedResultsDirectories); do
       if [ -d "$dir" ]; then
         echo "<li><a href='${dir##*/}/index.html'>${dir##*/}</a></li>"
       fi
@@ -683,7 +687,7 @@ createMainModelIndexHtml() {
   modelsFound=()
   modelsIndex=()
 
-  for dir in "$resultsDirectory"/*; do # for each item in main results directory
+  for dir in $(getSortedResultsDirectories); do # for each item in main results directory
     if [ -d "$dir" ]; then # if is a directory
       for file in "$dir"/*.html; do # for each *.html file in the directory
         if [[ $file != *"/index.html" && $file != *"/models.html" ]]; then # skip index.html and models.html
@@ -699,7 +703,7 @@ createMainModelIndexHtml() {
   done
 
   mainModelIndexHtml="$resultsDirectory/models.html"
-  echo $(getDateTime) "Creating: $mainModelIndexHtml"
+  echo; echo $(getDateTime) "Creating Main Model Index Page: $mainModelIndexHtml"
   {
     showHeader "$NAME: Model Run Index"
     titleLink="<b><a href='index.html'>$NAME</a></b>: Model Run Index"
@@ -779,10 +783,10 @@ parseThinkingOutput() {
     content=$(echo "$content" | sed '/<think>/,/<\/think>/d')
     content=$(echo "$content" | sed '/Thinking\.\.\./,/\.\.\.done thinking\./d')
 
-    echo $(getDateTime) "Creating: $modelThinkingTxt"
+    echo $(getDateTime) "Creating Thinking Text: $modelThinkingTxt"
     echo "$thinkingContent" > "$modelThinkingTxt"
 
-    echo $(getDateTime) "Updating: $modelOutputTxt"
+    echo $(getDateTime) "Updating Model Output Text: $modelOutputTxt"
     echo "$content" > "$modelOutputTxt"
   fi
 }
@@ -806,8 +810,8 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   clearModel "$model"
   modelOutputTxt="$outputDirectory/$(safeString "$model").output.txt"
   modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
-  echo $(getDateTime) "Creating: $modelOutputTxt"
-  echo $(getDateTime) "Creating: $modelStatsTxt"
+  echo $(getDateTime) "Creating Model Output Text: $modelOutputTxt"
+  echo $(getDateTime) "Creating Model Stats Text: $modelStatsTxt"
   runModelWithTimeout
   setSystemMemoryStats
   setOllamaStats
