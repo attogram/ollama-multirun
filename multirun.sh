@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.15"
+VERSION="5.16"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -409,10 +409,11 @@ showSystemStats() {
   echo "<tr><td class='left'>Ollama proc</td><td class='left'>$ollamaProcessor</td></tr>"
   echo "<tr><td class='left'>Ollama context</td><td class='left'>$ollamaContext</td></tr>"
   echo "<tr><td class='left'>Ollama version</td><td class='left'>$ollamaVersion</td></tr>"
-  echo "<tr><td class='left'>sys arch</td><td class='left'>$systemArch</td></tr>"
-  echo "<tr><td class='left'>sys processor</td><td class='left'>$systemProcessor</td></tr>"
+  echo "<tr><td class='left'>Multirun timeout</td><td class='left'>$TIMEOUT seconds</td></tr>"
+  echo "<tr><td class='left'>Sys arch</td><td class='left'>$systemArch</td></tr>"
+  echo "<tr><td class='left'>Sys processor</td><td class='left'>$systemProcessor</td></tr>"
   echo "<tr><td class='left'>sys memory</td><td class='left'>$systemMemoryUsed + $systemMemoryAvail</td></tr>"
-  echo "<tr><td class='left'>sys OS</td><td class='left'>$systemOSName $systemOSVersion</td></tr>"
+  echo "<tr><td class='left'>Sys OS</td><td class='left'>$systemOSName $systemOSVersion</td></tr>"
   echo "</table></div>"
 }
 
@@ -742,8 +743,7 @@ runModelWithTimeout() {
   (
     sleep $TIMEOUT
     if kill -0 $pid 2>/dev/null; then
-      echo
-      echo "[ERROR: Session Timeout after ${TIMEOUT} seconds]" > "${modelOutputTxt}"
+      echo "[ERROR: Multirun Timeout after ${TIMEOUT} seconds]" > "${modelOutputTxt}"
       kill $pid 2>/dev/null
     fi
 
