@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.13"
+VERSION="5.14"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -100,6 +100,10 @@ parseCommandLine() {
   eval set -- "$prompt"
 }
 
+getDateTime() {
+  echo $(date '+%Y-%m-%d %H:%M:%S')
+}
+
 setModels() {
   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
   if [ -z "$models" ]; then
@@ -141,7 +145,7 @@ createOutputDirectory() {
   tag=$(safeString "$prompt")
   tagDatetime=$(date '+%Y%m%d-%H%M%S')
   outputDirectory="$resultsDirectory/${tag}_${tagDatetime}"
-  echo "Output Directory: $outputDirectory/"
+  echo $(getDateTime) "Output Directory: $outputDirectory/"
   if [ ! -d "$outputDirectory" ]; then
     if ! mkdir -p "$outputDirectory"; then
       echo "Error: Failed to create Output Directory $outputDirectory" >&2
@@ -165,17 +169,17 @@ setPrompt() {
 }
 
 savePrompt() {
-  echo; echo "Prompt:"; echo "$prompt"; echo
+  echo $(getDateTime) "Prompt: $prompt"
 
   promptFile="$outputDirectory/prompt.txt"
-  echo "Creating: $promptFile"
+  echo $(getDateTime) "Creating: $promptFile"
   echo "$prompt" > "$promptFile"
 
   promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
   promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
   promptYamlFile="$outputDirectory/$tag.prompt.yaml"
-  echo "Creating: $promptYamlFile"
+  echo $(getDateTime) "Creating: $promptYamlFile"
   generatePromptYaml > "$promptYamlFile"
 }
 
@@ -233,7 +237,7 @@ showImages() {
 }
 
 clearModel() {
-  echo "Clearing model session: $1"
+  echo $(getDateTime) "Clearing model session: $1"
   (
     expect \
     -c "spawn ollama run $1" \
@@ -251,7 +255,7 @@ clearModel() {
 }
 
 stopModel() {
-  echo "Stopping model: $1"
+  echo $(getDateTime) "Stopping model: $1"
   ollama stop "$1"
   if [ $? -ne 0 ]; then
     echo "ERROR: Failed to stop model: $1" >&2
@@ -289,7 +293,7 @@ showFooter() {
   echo "<br /><br />"
   echo "<footer>"
   echo "<p>$title</p>"
-  echo "<p>Page created: $(date '+%Y-%m-%d %H:%M:%S')</p>"
+  echo "<p>Page created: $(getDateTime)</p>"
   echo "<p>Generated with: <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p>"
   echo "</footer></body></html>"
 }
@@ -415,7 +419,7 @@ showSystemStats() {
 createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
     modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
-    echo "Creating: $modelInfoTxt"
+    echo $(getDateTime) "Creating: $modelInfoTxt"
     ollama show "$model" > "$modelInfoTxt"
   done
 }
@@ -489,7 +493,7 @@ setModelInfo() {
 createModelsOverviewHtml() {
   # list of models used in current run
   modelsIndexHtml="$outputDirectory/models.html"
-  echo "Creating: $modelsIndexHtml"
+  echo $(getDateTime) "Creating: $modelsIndexHtml"
   {
     showHeader "$NAME: models"
     titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime"
@@ -540,7 +544,7 @@ EOF
 
 createModelOutputHtml() {
   modelHtmlFile="$outputDirectory/$(safeString "$model").html"
-  echo "Creating: $modelHtmlFile"
+  echo $(getDateTime) "Creating: $modelHtmlFile"
   {
     showHeader "$NAME: $model"
     titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime"
@@ -595,7 +599,7 @@ createModelOutputHtml() {
 
 createOutputIndexHtml() {
   outputIndexHtml="$outputDirectory/index.html"
-  echo "Creating: $outputIndexHtml"
+  echo $(getDateTime) "Creating: $outputIndexHtml"
   {
     showHeader "$NAME: $tag"
     titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
@@ -656,7 +660,7 @@ finishOutputIndexHtml() {
 
 createMainIndexHtml() {
   resultsIndexFile="${resultsDirectory}/index.html"
-  echo "Creating: $resultsIndexFile"
+  echo $(getDateTime) "Creating: $resultsIndexFile"
   {
     showHeader "$NAME: results"
     titleLink="<b>$NAME</b>"
@@ -695,7 +699,7 @@ createMainModelIndexHtml() {
   done
 
   mainModelIndexHtml="$resultsDirectory/models.html"
-  echo "Creating: $mainModelIndexHtml"
+  echo $(getDateTime) "Creating: $mainModelIndexHtml"
   {
     showHeader "$NAME: Model Run Index"
     titleLink="<b><a href='index.html'>$NAME</a></b>: Model Run Index"
@@ -775,10 +779,10 @@ parseThinkingOutput() {
     content=$(echo "$content" | sed '/<think>/,/<\/think>/d')
     content=$(echo "$content" | sed '/Thinking\.\.\./,/\.\.\.done thinking\./d')
 
-    echo "Creating: $modelThinkingTxt"
+    echo $(getDateTime) "Creating: $modelThinkingTxt"
     echo "$thinkingContent" > "$modelThinkingTxt"
 
-    echo "Updating: $modelOutputTxt"
+    echo $(getDateTime) "Updating: $modelOutputTxt"
     echo "$content" > "$modelOutputTxt"
   fi
 }
@@ -789,6 +793,7 @@ parseCommandLine "$@"
 echo; echo "$NAME v$VERSION"; echo
 setModels
 setPrompt
+echo; echo $(getDateTime) "Response Timeout: $TIMEOUT"
 createOutputDirectory
 createMainIndexHtml
 savePrompt
@@ -796,14 +801,13 @@ createModelInfoTxt
 createModelsOverviewHtml
 setSystemStats
 createOutputIndexHtml
-echo "Response Timeout: $TIMEOUT"
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
-  echo; echo "Running model: $model"; echo
+  echo; echo $(getDateTime) "Running model: $model"
   clearModel "$model"
   modelOutputTxt="$outputDirectory/$(safeString "$model").output.txt"
   modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
-  echo "Creating: $modelOutputTxt"
-  echo "Creating: $modelStatsTxt"
+  echo $(getDateTime) "Creating: $modelOutputTxt"
+  echo $(getDateTime) "Creating: $modelStatsTxt"
   runModelWithTimeout
   setSystemMemoryStats
   setOllamaStats
@@ -816,4 +820,4 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
 done
 finishOutputIndexHtml
 createMainModelIndexHtml
-echo; echo "Done: $outputDirectory/"
+echo; echo $(getDateTime) "Done: $outputDirectory/"
