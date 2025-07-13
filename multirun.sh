@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.18"
+VERSION="5.19"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -632,8 +632,8 @@ createOutputIndexHtml() {
   <thead>
     <tr>
       <th class='left'>Model</th>
-      <th>Words</th>
-      <th>Bytes</th>
+      <th>Response<br />words</th>
+      <th>Response<br />bytes</th>
       <th>Total<br />duration</th>
       <th>Load<br />duration</th>
       <th>Prompt eval<br />count</th>
@@ -642,8 +642,11 @@ createOutputIndexHtml() {
       <th>Eval<br />count</th>
       <th>Eval<br />duration</th>
       <th>Eval<br />rate</th>
+      <th>Model<br />params</th>
+      <th>Model<br />size</th>
       <th>Model<br />context</th>
       <th>Ollama<br />context</th>
+      <th>Ollama<br />proc</th>
     </tr>
   </thead>
   <tbody>
@@ -665,8 +668,11 @@ addModelToOutputIndexHtml() {
     echo "<td>$statsEvalCount</td>"
     echo "<td>$statsEvalDuration</td>"
     echo "<td>$statsEvalRate</td>"
+    echo "<td>$modelParameters</td>"
+    echo "<td>$ollamaSize</td>"
     echo "<td>$modelContextLength</td>"
     echo "<td>$ollamaContext</td>"
+    echo "<td>$ollamaProcessor</td>"
     echo "</tr>"
   ) >> "$outputIndexHtml"
 }
