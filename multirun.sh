@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.17"
+VERSION="5.18"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -515,22 +515,23 @@ createModelsOverviewHtml() {
     echo "<header>$titleLink</header>"
     cat <<- EOF
 <br />
-<table class="sortable">
+<table class='sortable'>
   <thead>
     <tr>
-      <th class='left'>model</th>
-      <th>architecture</th>
-      <th>parameters</th>
-      <th>context<br />length</th>
-      <th>embedding<br />length</th>
-      <th>quantization</th>
-      <th>temperature</th>
-      <th>capabilities</th>
-      <th class='left'>system prompt</th>
-      <th>(raw)</th>
-      <th>(index)</th>
+      <th class='left'>Model</th>
+      <th>Architecture</th>
+      <th>Parameters</th>
+      <th>Context<br />length</th>
+      <th>Embedding<br />length</th>
+      <th>Quantization</th>
+      <th>Temperature</th>
+      <th>Capabilities</th>
+      <th class='left'>System prompt</th>
+      <th class='no-sort'>(raw)</th>
+      <th class='no-sort'>(index)</th>
     </tr>
   </thead>
+  <tbody>
 EOF
   } > "$modelsIndexHtml"
 
@@ -554,7 +555,7 @@ EOF
   done
 
   {
-    echo "</table>"
+    echo "</tbody></table>"
     showSortableTablesJavascript
     showFooter "$titleLink"
   } >> "$modelsIndexHtml"
@@ -585,28 +586,28 @@ createModelOutputHtml() {
 
     echo "<div class='box'><table>"
     echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeString "$model").stats.txt'>raw</a>)</td></tr>"
-    echo "<tr><td class='left'>words</td><td>$responseWords</td></tr>"
-    echo "<tr><td class='left'>bytes</td><td>$responseBytes</td></tr>"
-    echo "<tr><td class='left'>total duration</td><td>$statsTotalDuration</td></tr>"
-    echo "<tr><td class='left'>load duration</td><td>$statsLoadDuration</td></tr>"
-    echo "<tr><td class='left'>prompt eval count</td><td>$statsPromptEvalCount</td></tr>"
-    echo "<tr><td class='left'>prompt eval duration</td><td>$statsPromptEvalDuration</td></tr>"
-    echo "<tr><td class='left'>prompt eval rate</td><td>$statsPromptEvalRate</td></tr>"
-    echo "<tr><td class='left'>eval count</td><td>$statsEvalCount</td></tr>"
-    echo "<tr><td class='left'>eval duration</td><td>$statsEvalDuration</td></tr>"
-    echo "<tr><td class='left'>eval rate</td><td>$statsEvalRate</td></tr>"
+    echo "<tr><td class='left'>Words</td><td>$responseWords</td></tr>"
+    echo "<tr><td class='left'>Bytes</td><td>$responseBytes</td></tr>"
+    echo "<tr><td class='left'>Total duration</td><td>$statsTotalDuration</td></tr>"
+    echo "<tr><td class='left'>Load duration</td><td>$statsLoadDuration</td></tr>"
+    echo "<tr><td class='left'>Prompt eval count</td><td>$statsPromptEvalCount</td></tr>"
+    echo "<tr><td class='left'>Prompt eval duration</td><td>$statsPromptEvalDuration</td></tr>"
+    echo "<tr><td class='left'>Prompt eval rate</td><td>$statsPromptEvalRate</td></tr>"
+    echo "<tr><td class='left'>Eval count</td><td>$statsEvalCount</td></tr>"
+    echo "<tr><td class='left'>Eval duration</td><td>$statsEvalDuration</td></tr>"
+    echo "<tr><td class='left'>Eval rate</td><td>$statsEvalRate</td></tr>"
     echo "</table></div>"
 
     echo "<div class='box'><table>"
     echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeString "$model").info.txt'>raw</a>)</td></tr>"
-    echo "<tr><td class='left'>name</td><td class='left'><a href='../models.html#$(safeString "$model")'>$model</a></td></tr>"
-    echo "<tr><td class='left'>architecture</td><td class='left'>$modelArchitecture</td></tr>"
-    echo "<tr><td class='left'>size</td><td class='left'>$ollamaSize</td></tr>"
-    echo "<tr><td class='left'>parameters</td><td class='left'>$modelParameters</td></tr>"
-    echo "<tr><td class='left'>context length</td><td class='left'>$modelContextLength</td></tr>"
-    echo "<tr><td class='left'>embedding length</td><td  class='left'>$modelEmbeddingLength</td></tr>"
-    echo "<tr><td class='left'>quantization</td><td class='left'>$modelQuantization</td></tr>"
-    echo "<tr><td class='left'>capabilities</td><td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
+    echo "<tr><td class='left'>Name</td><td class='left'><a href='../models.html#$(safeString "$model")'>$model</a></td></tr>"
+    echo "<tr><td class='left'>Architecture</td><td class='left'>$modelArchitecture</td></tr>"
+    echo "<tr><td class='left'>Size</td><td class='left'>$ollamaSize</td></tr>"
+    echo "<tr><td class='left'>Parameters</td><td class='left'>$modelParameters</td></tr>"
+    echo "<tr><td class='left'>Context length</td><td class='left'>$modelContextLength</td></tr>"
+    echo "<tr><td class='left'>Embedding length</td><td  class='left'>$modelEmbeddingLength</td></tr>"
+    echo "<tr><td class='left'>Quantization</td><td class='left'>$modelQuantization</td></tr>"
+    echo "<tr><td class='left'>Capabilities</td><td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
     echo "</table></div>"
 
     showSystemStats
@@ -627,22 +628,25 @@ createOutputIndexHtml() {
     showPrompt
     echo "<!-- IMAGES -->"
     cat <<- "EOF"
-<table class="sortable">
+<table class='sortable'>
   <thead>
     <tr>
-      <th class='left'>model</th>
-      <th>words</th>
-      <th>bytes</th>
-      <th>total<br />duration</th>
-      <th>load<br />duration</th>
-      <th>prompt eval<br />count</th>
-      <th>prompt eval<br />duration</th>
-      <th>prompt eval<br />rate</th>
-      <th>eval<br />count</th>
-      <th>eval<br />duration</th>
-      <th>eval<br />rate</th>
+      <th class='left'>Model</th>
+      <th>Words</th>
+      <th>Bytes</th>
+      <th>Total<br />duration</th>
+      <th>Load<br />duration</th>
+      <th>Prompt eval<br />count</th>
+      <th>Prompt eval<br />duration</th>
+      <th>Prompt eval<br />rate</th>
+      <th>Eval<br />count</th>
+      <th>Eval<br />duration</th>
+      <th>Eval<br />rate</th>
+      <th>Model<br />context</th>
+      <th>Ollama<br />context</th>
     </tr>
   </thead>
+  <tbody>
 EOF
   } > "$outputIndexHtml"
 }
@@ -661,13 +665,15 @@ addModelToOutputIndexHtml() {
     echo "<td>$statsEvalCount</td>"
     echo "<td>$statsEvalDuration</td>"
     echo "<td>$statsEvalRate</td>"
+    echo "<td>$modelContextLength</td>"
+    echo "<td>$ollamaContext</td>"
     echo "</tr>"
   ) >> "$outputIndexHtml"
 }
 
 finishOutputIndexHtml() {
   {
-    echo "</table>"
+    echo "</tbody></table>"
     echo "<br /><br />"
     showSystemStats
     showSortableTablesJavascript
