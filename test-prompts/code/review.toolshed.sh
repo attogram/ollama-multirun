@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
+# usage: ./test-prompts/code/review.[script].sh | ./multirun.sh
 
-echo "Review this toolshed.sh Bash script: "
+name="toolshed.sh"
+file="../ollama-bash-toolshed/toolshed.sh"
+
+echo "This is the $name Bash script."
+echo "Act as an expert Software Engineer."
+echo "Do a full code review of this script:"
 echo
-echo "$(cat ../ollama-bash-toolshed/toolshed.sh)"
+cat "$file"

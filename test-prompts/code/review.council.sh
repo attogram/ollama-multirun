@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
+# usage: ./test-prompts/code/review.[script].sh | ./multirun.sh
 
-echo "Review this council.sh Bash script: "
+name="council.sh"
+file="../llm-council/council.sh"
+
+echo "This is the $name Bash script."
+echo "Act as an expert Software Engineer."
+echo "Do a full code review of this script:"
 echo
-echo "$(cat ../llm-council/council.sh)"
+cat "$file"
