@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 NAME="ollama-multirun"
-VERSION="5.19"
+VERSION="5.20"
 URL="https://github.com/attogram/ollama-multirun"
 
 TIMEOUT="300" # number of seconds to allow model to respond
@@ -770,7 +770,7 @@ createMainModelIndexHtml() {
 }
 
 runModelWithTimeout() {
-  ollama run --verbose "${model}" -- "${prompt}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
+  echo "$prompt" | ollama run --verbose "${model}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
   pid=$!
   (
     sleep $TIMEOUT
