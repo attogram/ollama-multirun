@@ -12,6 +12,8 @@ Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
 
+For Help and Discussions please join the [Attogram Discord Channel](https://discord.gg/BGQJCbYVBa)
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
