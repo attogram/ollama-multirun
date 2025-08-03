@@ -5,6 +5,6 @@ name="toolshed.sh"
 file="../ollama-bash-toolshed/toolshed.sh"
 
 echo "Act as an expert Software Engineer."
-echo "Do a critical code review of this $name script:"
+echo "Do a code review of this $name script:"
 echo
 cat "$file"

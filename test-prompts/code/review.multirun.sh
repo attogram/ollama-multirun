@@ -5,7 +5,7 @@ name="multirun.sh"
 file="./multirun.sh"
 
 echo "Act as an expert Software Engineer."
-echo "Do a critical code review of this $name script:"
+echo "Do a code review of this $name script:"
 echo
 cat "$file"
 
