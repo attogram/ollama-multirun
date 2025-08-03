@@ -23,20 +23,23 @@
 #    To set new timeout (in seconds):
 #      ./multirun.sh -t 30
 
-NAME="ollama-multirun"
-VERSION="5.20.3"
-URL="https://github.com/attogram/ollama-multirun"
+OLLAMA_MULTIRUN_NAME="ollama-multirun"
+OLLAMA_MULTIRUN_VERSION="5.21.0"
+OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
+OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
+OLLAMA_MULTIRUN_LICENSE="MIT"
+OLLAMA_MULTIRUN_COPYRIGHT="Copyright (c) 2025 Ollama Bash Lib, Attogram Project <https://github.com/attogram>"
 
 TIMEOUT="300" # number of seconds to allow model to respond
 
 usage() {
   me=$(basename "$0")
-  echo "$NAME"; echo
+  echo "$OLLAMA_MULTIRUN_NAME"; echo
   echo "Usage:"
   echo "  ./$me [flags]"
   echo "  ./$me [flags] [prompt]"
   echo; echo "Flags:";
-  echo "  -h       -- Help for $NAME"
+  echo "  -h       -- Help for $OLLAMA_MULTIRUN_NAME"
   echo "  -m model1,model2  -- Use specific models (comma separated list)"
   echo "  -r <dir> -- Set results directory"
   echo "  -t #     -- Set timeout, in seconds"
@@ -55,7 +58,7 @@ parseCommandLine() {
         exit 0
         ;;
       -m) # specify models to run
-        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
           modelsList=$2
           shift 2
         else
@@ -64,7 +67,7 @@ parseCommandLine() {
         fi
         ;;
       -r) # specify results outputDirectory
-        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
           resultsDirectory=$2
           shift 2
         else
@@ -73,7 +76,7 @@ parseCommandLine() {
         fi
         ;;
       -t) # specify timeout in seconds
-        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
           TIMEOUT=$2
           shift 2
         else
@@ -82,10 +85,10 @@ parseCommandLine() {
         fi
         ;;
       -v)
-        echo "$NAME v$VERSION"
+        echo "$OLLAMA_MULTIRUN_NAME v$OLLAMA_MULTIRUN_VERSION"
         exit 0
         ;;
-      -*|--*=) # unsupported flags
+      -*) # unsupported flags
         echo "Error: unsupported argument: $1" >&2
         exit 1
         #shift 1
@@ -101,12 +104,12 @@ parseCommandLine() {
 }
 
 getDateTime() {
-  echo $(date '+%Y-%m-%d %H:%M:%S')
+  date '+%Y-%m-%d %H:%M:%S'
 }
 
 setModels() {
   models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
-  if [ -z "$models" ]; then
+  if [ -z "${models[*]}" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'" >&2
     exit 1
   fi
@@ -123,7 +126,7 @@ setModels() {
       fi
     done
   fi
-  if [ -n "$parsedModels" ]; then
+  if [ -n "${parsedModels[*]}" ]; then
     models=("${parsedModels[@]}")
   fi
 
@@ -134,9 +137,9 @@ setModels() {
 
 safeString() {
   local input="$1" # Get the input
-  input=${input:0:42} # Truncate to first 42 characters
+  input=${input:0:120} # Truncate to first 120 characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
-  input=$(echo "$input" | sed "s/ /_/g") # Replace spaces with underscores
+  input=${input// /_} # Replace spaces with underscores
   input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_') # Replace non-allowed characters with underscores
   echo "$input" # Output the sanitized string
 }
@@ -144,8 +147,8 @@ safeString() {
 createOutputDirectory() {
   tag=$(safeString "$prompt")
   tagDatetime=$(date '+%Y%m%d-%H%M%S')
-  outputDirectory="$resultsDirectory/${tag}_${tagDatetime}"
-  echo $(getDateTime) "Output Directory: $outputDirectory/"
+  outputDirectory="$resultsDirectory/${tagDatetime}_${tag}"
+  echo "$(getDateTime)" "Output Directory: $outputDirectory/"
   if [ ! -d "$outputDirectory" ]; then
     if ! mkdir -p "$outputDirectory"; then
       echo "Error: Failed to create Output Directory $outputDirectory" >&2
@@ -169,17 +172,17 @@ setPrompt() {
 }
 
 savePrompt() {
-  echo $(getDateTime) "Prompt: $prompt"
+  echo "$(getDateTime)" "Prompt: $prompt"
 
   promptFile="$outputDirectory/prompt.txt"
-  echo $(getDateTime) "Creating Prompt Text: $promptFile"
+  echo "$(getDateTime)" "Creating Prompt Text: $promptFile"
   echo "$prompt" > "$promptFile"
 
   promptWords=$(wc -w < "$promptFile" | awk '{print $1}')
   promptBytes=$(wc -c < "$promptFile" | awk '{print $1}')
 
   promptYamlFile="$outputDirectory/$tag.prompt.yaml"
-  echo $(getDateTime) "Creating Prompt Yaml: $promptYamlFile"
+  echo "$(getDateTime)" "Creating Prompt Yaml: $promptYamlFile"
   generatePromptYaml > "$promptYamlFile"
 }
 
@@ -209,7 +212,8 @@ textarea() {
   if [ -z "$max" ]; then
     max=25
   fi
-  local lines=$(echo "$content\n" | wc -l) # Get number of lines in content
+  local lines
+  lines=$(printf '%s\n' "$content" | wc -l) # Get number of lines in content
   lines=$((lines + padding))
   if [ "$lines" -gt "$max" ]; then
     lines=$max
@@ -229,7 +233,7 @@ showImages() {
   if [ -n "$addedImages" ]; then
     for image in ${addedImages}; do
       echo -n "<div class='box'>"
-      echo -n "<a target='image' href='$(basename $image)'><img src='$(basename $image)' alt='$image' width='250' /></a>"
+      echo -n "<a target='image' href='$(basename "$image")'><img src='$(basename "$image")' alt='$image' width='250' /></a>"
       echo -n "</div>"
     done
     echo -n "<br />"
@@ -237,7 +241,7 @@ showImages() {
 }
 
 clearModel() {
-  echo $(getDateTime) "Clearing model session: $1"
+  echo "$(getDateTime)" "Clearing model session: $1"
   (
     expect \
     -c "spawn ollama run $1" \
@@ -255,10 +259,9 @@ clearModel() {
 }
 
 stopModel() {
-  echo $(getDateTime) "Stopping model: $1"
-  ollama stop "$1"
-  if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to stop model: $1" >&2
+  echo "$(getDateTime)" "Stopping model: $1"
+  if ! ollama stop "$1"; then
+    echo "$(getDateTime)" "ERROR: Failed to stop model: $1" >&2
     # exit 1
   fi
 }
@@ -308,7 +311,7 @@ showFooter() {
   echo "<footer>"
   echo "<p>$title</p>"
   echo "<p>Page created: $(getDateTime)</p>"
-  echo "<p>Generated with: <a target='$NAME' href='$URL'>$NAME</a> v$VERSION</p>"
+  echo "<p>Generated with: <a target='$OLLAMA_MULTIRUN_NAME' href='$URL'>$OLLAMA_MULTIRUN_NAME</a> v$OLLAMA_MULTIRUN_VERSION</p>"
   echo "</footer></body></html>"
 }
 
@@ -316,7 +319,7 @@ createMenu() {
   local currentModel="$1"
   echo "<span class='menu'>"
   echo "<a href='models.html'>models</a>: "
-  for modelName in ${models[@]}; do
+  for modelName in "${models[@]}"; do
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b> "
     else
@@ -339,9 +342,9 @@ setStats() {
   addedImages=$(grep -oE "Added image '(.*)'" "$modelStatsTxt" | awk '{ print $NF }' | sed "s/'//g")
   if [ -n "$addedImages" ]; then
     for image in ${addedImages}; do
-      if ! [ -f "$outputDirectory"/"$(basename $image)" ]; then
+      if ! [ -f "$outputDirectory"/"$(basename "$image")" ]; then
         echo "Copying image: $image"
-        cp $image $outputDirectory
+        cp "$image" "$outputDirectory"
       fi
     done
   fi
@@ -376,8 +379,10 @@ setSystemMemoryStats() {
     cygwin|msys)
       #echo "OS Type match: cygwin|msys"
       if command -v wmic >/dev/null 2>&1; then
-        local totalMemKB=$(wmic OS get TotalVisibleMemorySize /value 2>/dev/null | grep -E "^TotalVisibleMemorySize=" | cut -d'=' -f2 | tr -d '\r')
-        local availMemKB=$(wmic OS get FreePhysicalMemory /value 2>/dev/null | grep -E "^FreePhysicalMemory=" | cut -d'=' -f2 | tr -d '\r')
+        local totalMemKB
+        totalMemKB=$(wmic OS get TotalVisibleMemorySize /value 2>/dev/null | grep -E "^TotalVisibleMemorySize=" | cut -d'=' -f2 | tr -d '\r')
+        local availMemKB
+        availMemKB=$(wmic OS get FreePhysicalMemory /value 2>/dev/null | grep -E "^FreePhysicalMemory=" | cut -d'=' -f2 | tr -d '\r')
         if [ -n "$totalMemKB" ] && [ -n "$availMemKB" ]; then
           local usedMemKB=$((totalMemKB - availMemKB))
           # Convert KB to human readable format (approximate)
@@ -388,9 +393,9 @@ setSystemMemoryStats() {
           else
             systemMemoryUsed="${usedMemKB}K"
           fi
-          if [ $availMemKB -gt 1048576 ]; then
+          if [ "$availMemKB" -gt 1048576 ]; then
             systemMemoryAvail="$((availMemKB / 1048576))G"
-          elif [ $availMemKB -gt 1024 ]; then
+          elif [ "$availMemKB" -gt 1024 ]; then
             systemMemoryAvail="$((availMemKB / 1024))M"
           else
             systemMemoryAvail="${availMemKB}K"
@@ -434,7 +439,7 @@ showSystemStats() {
 createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
     modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
-    echo $(getDateTime) "Creating Model Info Text: $modelInfoTxt"
+    echo "$(getDateTime)" "Creating Model Info Text: $modelInfoTxt"
     ollama show "$model" > "$modelInfoTxt"
   done
 }
@@ -508,10 +513,10 @@ setModelInfo() {
 createModelsOverviewHtml() {
   # list of models used in current run
   modelsIndexHtml="$outputDirectory/models.html"
-  echo $(getDateTime) "Creating Models Index Page: $modelsIndexHtml"
+  echo "$(getDateTime)" "Creating Models Index Page: $modelsIndexHtml"
   {
-    showHeader "$NAME: models"
-    titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime"
+    showHeader "$OLLAMA_MULTIRUN_NAME: models"
+    titleLink="<a href='../index.html'>$OLLAMA_MULTIRUN_NAME</a>: <a href='./index.html'>$tag</a>: <b>models</b>: $tagDatetime"
     echo "<header>$titleLink</header>"
     cat <<- EOF
 <br />
@@ -563,10 +568,10 @@ EOF
 
 createModelOutputHtml() {
   modelHtmlFile="$outputDirectory/$(safeString "$model").html"
-  echo $(getDateTime) "Creating Model Output Page: $modelHtmlFile"
+  echo "$(getDateTime)" "Creating Model Output Page: $modelHtmlFile"
   {
-    showHeader "$NAME: $model"
-    titleLink="<a href='../index.html'>$NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime"
+    showHeader "$OLLAMA_MULTIRUN_NAME: $model"
+    titleLink="<a href='../index.html'>$OLLAMA_MULTIRUN_NAME</a>: <a href='./index.html'>$tag</a>: <b>$model</b>: $tagDatetime"
     echo "<header>$titleLink<br /><br />"
     createMenu "$model"
     echo "</header>"
@@ -618,10 +623,10 @@ createModelOutputHtml() {
 
 createOutputIndexHtml() {
   outputIndexHtml="$outputDirectory/index.html"
-  echo $(getDateTime) "Creating Output Index Page: $outputIndexHtml"
+  echo "$(getDateTime)" "Creating Output Index Page: $outputIndexHtml"
   {
-    showHeader "$NAME: $tag"
-    titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
+    showHeader "$OLLAMA_MULTIRUN_NAME: $tag"
+    titleLink="<a href='../index.html'>$OLLAMA_MULTIRUN_NAME</a>: <b>$tag</b>: $tagDatetime"
     echo "<header>$titleLink<br /><br />"
     createMenu "index"
     echo  "</header>"
@@ -683,7 +688,7 @@ finishOutputIndexHtml() {
     echo "<br /><br />"
     showSystemStats
     showSortableTablesJavascript
-    titleLink="<a href='../index.html'>$NAME</a>: <b>$tag</b>: $tagDatetime"
+    titleLink="<a href='../index.html'>$OLLAMA_MULTIRUN_NAME</a>: <b>$tag</b>: $tagDatetime"
     showFooter "$titleLink"
   } >> "$outputIndexHtml"
 
@@ -693,15 +698,15 @@ finishOutputIndexHtml() {
 
 getSortedResultsDirectories() {
   # Sort directories by datetime at end of directory name
-  echo $(ls -d "$resultsDirectory"/* | awk 'match($0, /[0-9]{8}-[0-9]{6}$/) { print $0, substr($0, RSTART, RLENGTH) }' | sort -k2 -r | cut -d' ' -f1)
+  ls -d "$resultsDirectory"/* | awk 'match($0, /[0-9]{8}-[0-9]{6}$/) { print $0, substr($0, RSTART, RLENGTH) }' | sort -k2 -r | cut -d' ' -f1
 }
 
 createMainIndexHtml() {
   resultsIndexFile="${resultsDirectory}/index.html"
-  echo $(getDateTime) "Creating Main Index Page: $resultsIndexFile"
+  echo "$(getDateTime)" "Creating Main Index Page: $resultsIndexFile"
   {
-    showHeader "$NAME: results"
-    titleLink="<b>$NAME</b>"
+    showHeader "$OLLAMA_MULTIRUN_NAME: results"
+    titleLink="<b>$OLLAMA_MULTIRUN_NAME</b>"
     echo "<header>$titleLink</header>"
     echo "<p><a href='models.html'>Models Index</a></p>"
     echo "<p>Runs:<ul>"
@@ -712,7 +717,7 @@ createMainIndexHtml() {
     done
     echo "</ul></p>"
     showFooter "$titleLink"
-  } > $resultsIndexFile
+  } > "$resultsIndexFile"
 }
 
 createMainModelIndexHtml() {
@@ -726,7 +731,7 @@ createMainModelIndexHtml() {
         if [[ $file != *"/index.html" && $file != *"/models.html" ]]; then # skip index.html and models.html
           fileName="${file##*/}"
           modelName="${fileName%.html}" # remove .html to get model name
-          if [[ ! "${modelsFound[@]}" =~ "$modelName" ]]; then
+          if [[ ! "${modelsFound[*]}" =~ "$modelName" ]]; then
             modelsFound+=("$modelName")
           fi
           modelsIndex+=("$modelName:$dir/$fileName")
@@ -736,10 +741,10 @@ createMainModelIndexHtml() {
   done
 
   mainModelIndexHtml="$resultsDirectory/models.html"
-  echo; echo $(getDateTime) "Creating Main Model Index Page: $mainModelIndexHtml"
+  echo; echo "$(getDateTime)" "Creating Main Model Index Page: $mainModelIndexHtml"
   {
-    showHeader "$NAME: Model Run Index"
-    titleLink="<b><a href='index.html'>$NAME</a></b>: Model Run Index"
+    showHeader "$OLLAMA_MULTIRUN_NAME: Model Run Index"
+    titleLink="<b><a href='index.html'>$OLLAMA_MULTIRUN_NAME</a></b>: Model Run Index"
     echo "<header>$titleLink</header>"
 
     echo '<p>Models: '
@@ -756,7 +761,7 @@ createMainModelIndexHtml() {
         modelName=${modelIndex%%:*} # get everything before the :
         if [ "$modelName" == "$foundModel" ]; then
           run=${modelIndex#*:} # get everything after the :
-          runLink="${run#$resultsDirectory/}" # remove the results directory from beginning
+          runLink="${run#"$resultsDirectory"/}" # remove the results directory from beginning
           runName="${runLink%/*}" # remove everything after last slash including the slash
           echo "   <li><a href='$runLink'>$runName</a></li>"
         fi
@@ -773,7 +778,7 @@ runModelWithTimeout() {
   echo "$prompt" | ollama run --verbose "${model}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
   pid=$!
   (
-    sleep $TIMEOUT
+    sleep "$TIMEOUT"
     if kill -0 $pid 2>/dev/null; then
       echo "[ERROR: Multirun Timeout after ${TIMEOUT} seconds]" > "${modelOutputTxt}"
       kill $pid 2>/dev/null
@@ -797,14 +802,16 @@ runModelWithTimeout() {
 }
 
 parseThinkingOutput() {
-  local modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
+  local modelThinkingTxt
+  modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
 
   # Check for either <think> tags or Thinking... patterns
   if grep -q -E "(<think>|Thinking\.\.\.)" "$modelOutputTxt"; then
     #echo "Found thinking content in $modelOutputTxt, extracting..."
 
     # Read the entire file content
-    local content=$(cat "$modelOutputTxt")
+    local content
+    content=$(cat "$modelOutputTxt")
 
     # Extract thinking content
     local thinkingContent=""
@@ -815,10 +822,10 @@ parseThinkingOutput() {
     content=$(echo "$content" | sed '/<think>/,/<\/think>/d')
     content=$(echo "$content" | sed '/Thinking\.\.\./,/\.\.\.done thinking\./d')
 
-    echo $(getDateTime) "Creating Thinking Text: $modelThinkingTxt"
+    echo "$(getDateTime)" "Creating Thinking Text: $modelThinkingTxt"
     echo "$thinkingContent" > "$modelThinkingTxt"
 
-    echo $(getDateTime) "Updating Model Output Text: $modelOutputTxt"
+    echo "$(getDateTime)" "Updating Model Output Text: $modelOutputTxt"
     echo "$content" > "$modelOutputTxt"
   fi
 }
@@ -826,10 +833,10 @@ parseThinkingOutput() {
 export OLLAMA_MAX_LOADED_MODELS=1
 
 parseCommandLine "$@"
-echo; echo "$NAME v$VERSION"; echo
+echo; echo "$OLLAMA_MULTIRUN_NAME v$OLLAMA_MULTIRUN_VERSION"; echo
 setModels
 setPrompt
-echo; echo $(getDateTime) "Response Timeout: $TIMEOUT"
+echo; echo "$(getDateTime)" "Response Timeout: $TIMEOUT"
 createOutputDirectory
 createMainIndexHtml
 savePrompt
@@ -838,12 +845,12 @@ createModelsOverviewHtml
 setSystemStats
 createOutputIndexHtml
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
-  echo; echo $(getDateTime) "Running model: $model"
-  clearModel "$model"
+  echo; echo "$(getDateTime)" "Running model: $model"
+  # clearModel "$model" - not needed?
   modelOutputTxt="$outputDirectory/$(safeString "$model").output.txt"
   modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
-  echo $(getDateTime) "Creating Model Output Text: $modelOutputTxt"
-  echo $(getDateTime) "Creating Model Stats Text: $modelStatsTxt"
+  echo "$(getDateTime)" "Creating Model Output Text: $modelOutputTxt"
+  echo "$(getDateTime)" "Creating Model Stats Text: $modelStatsTxt"
   runModelWithTimeout
   setSystemMemoryStats
   setOllamaStats
@@ -856,4 +863,4 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
 done
 finishOutputIndexHtml
 createMainModelIndexHtml
-echo; echo $(getDateTime) "Done: $outputDirectory/"
+echo; echo "$(getDateTime)" "Done: $outputDirectory/"
