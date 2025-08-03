@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 OLLAMA_MULTIRUN_NAME="ollama-multirun"
-OLLAMA_MULTIRUN_VERSION="5.21.2"
+OLLAMA_MULTIRUN_VERSION="5.21.3"
 OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
 OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
 OLLAMA_MULTIRUN_LICENSE="MIT"
@@ -313,7 +313,7 @@ showFooter() {
   echo "<footer>"
   echo "<p>$title</p>"
   echo "<p>Page created: $(getDateTime)</p>"
-  echo "<p>Generated with: <a target='$OLLAMA_MULTIRUN_NAME' href='$URL'>$OLLAMA_MULTIRUN_NAME</a> v$OLLAMA_MULTIRUN_VERSION</p>"
+  echo "<p>Generated with: <a target='$OLLAMA_MULTIRUN_NAME' href='$OLLAMA_MULTIRUN_URL'>$OLLAMA_MULTIRUN_NAME v$OLLAMA_MULTIRUN_VERSION</a></p>"
   echo "</footer></body></html>"
 }
 
