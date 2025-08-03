@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 OLLAMA_MULTIRUN_NAME="ollama-multirun"
-OLLAMA_MULTIRUN_VERSION="5.21.1"
+OLLAMA_MULTIRUN_VERSION="5.21.2"
 OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
 OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
 OLLAMA_MULTIRUN_LICENSE="MIT"
@@ -148,7 +148,8 @@ safeString() {
 createOutputDirectory() {
   tag=$(safeString "$prompt")
   tagDatetime=$(date '+%Y%m%d-%H%M%S')
-  outputDirectory="$resultsDirectory/${tagDatetime}_${tag}"
+  #outputDirectory="$resultsDirectory/${tagDatetime}_${tag}"
+  outputDirectory="$resultsDirectory/${tag}_${tagDatetime}"
   echo "$(getDateTime)" "Output Directory: $outputDirectory/"
   if [ ! -d "$outputDirectory" ]; then
     if ! mkdir -p "$outputDirectory"; then
