@@ -24,7 +24,7 @@
 #      ./multirun.sh -t 30
 
 OLLAMA_MULTIRUN_NAME="ollama-multirun"
-OLLAMA_MULTIRUN_VERSION="5.21.0"
+OLLAMA_MULTIRUN_VERSION="5.21.1"
 OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
 OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
 OLLAMA_MULTIRUN_LICENSE="MIT"
@@ -137,7 +137,8 @@ setModels() {
 
 safeString() {
   local input="$1" # Get the input
-  input=${input:0:120} # Truncate to first 120 characters
+  local length="${2:-40}" # Get length, default to 40 characters
+  input=${input:0:length} # Truncate to first LENGTH characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
   input=${input// /_} # Replace spaces with underscores
   input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_') # Replace non-allowed characters with underscores
@@ -323,7 +324,7 @@ createMenu() {
     if [ "$modelName" == "$currentModel" ]; then
       echo "<b>$modelName</b> "
     else
-      echo "<a href='./$(safeString "$modelName").html'>$modelName</a> "
+      echo "<a href='./$(safeString "$modelName" 80).html'>$modelName</a> "
     fi
   done
   echo '</span>';
@@ -438,14 +439,14 @@ showSystemStats() {
 
 createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to text file
   for model in "${models[@]}"; do
-    modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
+    modelInfoTxt="$outputDirectory/$(safeString "$model" 80).info.txt"
     echo "$(getDateTime)" "Creating Model Info Text: $modelInfoTxt"
     ollama show "$model" > "$modelInfoTxt"
   done
 }
 
 setModelInfo() {
-  modelInfoTxt="$outputDirectory/$(safeString "$model").info.txt"
+  modelInfoTxt="$outputDirectory/$(safeString "$model" 80).info.txt"
   modelCapabilities=()
   modelSystemPrompt=""
   modelTemperature=""
@@ -544,7 +545,7 @@ EOF
     setModelInfo
     {
       echo "<tr>"
-      echo "<td class='left'><a href='./$(safeString "$model").html'>$model</a></td>"
+      echo "<td class='left'><a href='./$(safeString "$model" 80).html'>$model</a></td>"
       echo "<td>$modelArchitecture</td>"
       echo "<td>$modelParameters</td>"
       echo "<td>$modelContextLength</td>"
@@ -553,8 +554,8 @@ EOF
       echo "<td>$modelTemperature</td>"
       echo "<td class='left'>$(printf "%s<br />" "${modelCapabilities[@]}")</td>"
       echo "<td class='left'>$modelSystemPrompt</td>"
-      echo "<td><a href='./$(safeString "$model").info.txt'>raw</a></td>"
-      echo "<td><a href='../models.html#$(safeString "$model")'>index</a></td>"
+      echo "<td><a href='./$(safeString "$model" 80).info.txt'>raw</a></td>"
+      echo "<td><a href='../models.html#$(safeString "$model" 80)'>index</a></td>"
       echo "</tr>"
     } >> "$modelsIndexHtml"
   done
@@ -567,7 +568,7 @@ EOF
 }
 
 createModelOutputHtml() {
-  modelHtmlFile="$outputDirectory/$(safeString "$model").html"
+  modelHtmlFile="$outputDirectory/$(safeString "$model" 80).html"
   echo "$(getDateTime)" "Creating Model Output Page: $modelHtmlFile"
   {
     showHeader "$OLLAMA_MULTIRUN_NAME: $model"
@@ -578,19 +579,19 @@ createModelOutputHtml() {
     showPrompt
     showImages
 
-    modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
+    modelThinkingTxt="$outputDirectory/$(safeString "$model" 80).thinking.txt"
     if [ -f "$modelThinkingTxt" ]; then
-      echo "<p>Thinking: $model (<a href='./$(safeString "$model").thinking.txt'>raw</a>)<br />"
+      echo "<p>Thinking: $model (<a href='./$(safeString "$model" 80).thinking.txt'>raw</a>)<br />"
       textarea "$(cat "$modelThinkingTxt")" 3 15 # 3 padding, max 15 lines
       echo "</p>"
     fi
 
-    echo "<p>Output: $model (<a href='./$(safeString "$model").output.txt'>raw</a>)<br />"
+    echo "<p>Output: $model (<a href='./$(safeString "$model" 80).output.txt'>raw</a>)<br />"
     textarea "$(cat "$modelOutputTxt")" 3 25 # 3 padding, max 25 lines
     echo "</p>"
 
     echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeString "$model").stats.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeString "$model" 80).stats.txt'>raw</a>)</td></tr>"
     echo "<tr><td class='left'>Words</td><td>$responseWords</td></tr>"
     echo "<tr><td class='left'>Bytes</td><td>$responseBytes</td></tr>"
     echo "<tr><td class='left'>Total duration</td><td>$statsTotalDuration</td></tr>"
@@ -604,8 +605,8 @@ createModelOutputHtml() {
     echo "</table></div>"
 
     echo "<div class='box'><table>"
-    echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeString "$model").info.txt'>raw</a>)</td></tr>"
-    echo "<tr><td class='left'>Name</td><td class='left'><a href='../models.html#$(safeString "$model")'>$model</a></td></tr>"
+    echo "<tr><td class='left' colspan='2'>Model (<a href='./$(safeString "$model" 80).info.txt'>raw</a>)</td></tr>"
+    echo "<tr><td class='left'>Name</td><td class='left'><a href='../models.html#$(safeString "$model" 80)'>$model</a></td></tr>"
     echo "<tr><td class='left'>Architecture</td><td class='left'>$modelArchitecture</td></tr>"
     echo "<tr><td class='left'>Size</td><td class='left'>$ollamaSize</td></tr>"
     echo "<tr><td class='left'>Parameters</td><td class='left'>$modelParameters</td></tr>"
@@ -662,7 +663,7 @@ EOF
 addModelToOutputIndexHtml() {
   (
     echo "<tr>"
-    echo "<td class='left'><a href='./$(safeString "$model").html'>$model</a></td>"
+    echo "<td class='left'><a href='./$(safeString "$model" 80).html'>$model</a></td>"
     echo "<td>$responseWords</td>"
     echo "<td>$responseBytes</td>"
     echo "<td>$statsTotalDuration</td>"
@@ -803,7 +804,7 @@ runModelWithTimeout() {
 
 parseThinkingOutput() {
   local modelThinkingTxt
-  modelThinkingTxt="$outputDirectory/$(safeString "$model").thinking.txt"
+  modelThinkingTxt="$outputDirectory/$(safeString "$model" 80).thinking.txt"
 
   # Check for either <think> tags or Thinking... patterns
   if grep -q -E "(<think>|Thinking\.\.\.)" "$modelOutputTxt"; then
@@ -847,8 +848,8 @@ createOutputIndexHtml
 for model in "${models[@]}"; do # Loop through each model and run it with the given prompt
   echo; echo "$(getDateTime)" "Running model: $model"
   # clearModel "$model" - not needed?
-  modelOutputTxt="$outputDirectory/$(safeString "$model").output.txt"
-  modelStatsTxt="$outputDirectory/$(safeString "$model").stats.txt"
+  modelOutputTxt="$outputDirectory/$(safeString "$model" 80).output.txt"
+  modelStatsTxt="$outputDirectory/$(safeString "$model" 80).stats.txt"
   echo "$(getDateTime)" "Creating Model Output Text: $modelOutputTxt"
   echo "$(getDateTime)" "Creating Model Stats Text: $modelStatsTxt"
   runModelWithTimeout
