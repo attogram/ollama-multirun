@@ -23,6 +23,11 @@
 #    To set new timeout (in seconds):
 #      ./multirun.sh -t 30
 
+if [ -z "$BASH_VERSION" ] || ! (echo "$BASH_VERSION" | awk -F. '{exit !($1 > 3 || ($1 == 3 && $2 >= 2))}') ; then
+  echo "Error: This script requires Bash version 3.2 or higher." >&2
+  exit 1
+fi
+
 OLLAMA_MULTIRUN_NAME="ollama-multirun"
 OLLAMA_MULTIRUN_VERSION="5.21.3"
 OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
@@ -31,8 +36,10 @@ OLLAMA_MULTIRUN_LICENSE="MIT"
 OLLAMA_MULTIRUN_COPYRIGHT="Copyright (c) 2025 Ollama Bash Lib, Attogram Project <https://github.com/attogram>"
 
 TIMEOUT="300" # number of seconds to allow model to respond
+addedImages=()
 
 usage() {
+  local me
   me=$(basename "$0")
   echo "$OLLAMA_MULTIRUN_NAME"; echo
   echo "Usage:"
@@ -94,13 +101,15 @@ parseCommandLine() {
         #shift 1
         ;;
       *) # preserve positional arguments
-        prompt+="$1"
+        if [ -z "$prompt" ]; then
+          prompt="$1"
+        else
+          prompt+=" $1"
+        fi
         shift
         ;;
     esac
   done
-  # set positional arguments in their proper place
-  eval set -- "$prompt"
 }
 
 getDateTime() {
@@ -118,7 +127,14 @@ setModels() {
   if [ -n "$modelsList" ]; then
     IFS=',' read -ra modelsListArray <<< "$modelsList" # parse csv into modelsListArray
     for m in "${modelsListArray[@]}"; do
-      if [[ "${models[*]}" =~ "$m" ]]; then # if model exists
+      local found=0
+      for existing_model in "${models[@]}"; do
+          if [[ "$existing_model" == "$m" ]]; then
+              found=1
+              break
+          fi
+      done
+      if [[ $found -eq 1 ]]; then
         parsedModels+=("$m")
       else
         echo "Error: model not found: $m" >&2
@@ -232,10 +248,10 @@ showPrompt() {
 }
 
 showImages() {
-  if [ -n "$addedImages" ]; then
-    for image in ${addedImages}; do
+  if [ ${#addedImages[@]} -gt 0 ]; then
+    for image in "${addedImages[@]}"; do
       echo -n "<div class='box'>"
-      echo -n "<a target='image' href='$(basename "$image")'><img src='$(basename "$image")' alt='$image' width='250' /></a>"
+      echo -n "<a target='image' href='$(basename "$image")'><img src='$(basename "$image")' alt=\"$image\" width='250' /></a>"
       echo -n "</div>"
     done
     echo -n "<br />"
@@ -243,6 +259,10 @@ showImages() {
 }
 
 clearModel() {
+  if ! command -v expect >/dev/null 2>&1; then
+    echo "Warning: 'expect' command not found, skipping model clearing." >&2
+    return
+  fi
   echo "$(getDateTime)" "Clearing model session: $1"
   (
     expect \
@@ -341,10 +361,10 @@ setStats() {
   statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
   statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $3, $4 }')
 
-  addedImages=$(grep -oE "Added image '(.*)'" "$modelStatsTxt" | awk '{ print $NF }' | sed "s/'//g")
-  if [ -n "$addedImages" ]; then
-    for image in ${addedImages}; do
-      if ! [ -f "$outputDirectory"/"$(basename "$image")" ]; then
+  mapfile -t addedImages < <(grep -oE "Added image '(.*)'" "$modelStatsTxt" | awk '{ print $NF }' | sed "s/'//g")
+  if [ ${#addedImages[@]} -gt 0 ]; then
+    for image in "${addedImages[@]}"; do
+      if ! [ -f "$outputDirectory/$(basename "$image")" ]; then
         echo "Copying image: $image"
         cp "$image" "$outputDirectory"
       fi
@@ -407,6 +427,7 @@ setSystemMemoryStats() {
       ;;
     darwin*)
       #echo "OS Type match: darwin"
+      local top
       top=$(top -l 1 2>/dev/null || echo "")
       if [ -n "$top" ]; then
         systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}' || echo "N/A")
@@ -415,6 +436,7 @@ setSystemMemoryStats() {
       ;;
     *)
       #echo "OS Type match: *"
+      local top
       top=$(top -l 1 2>/dev/null || top -bn1 2>/dev/null || echo "")
       if [ -n "$top" ]; then
         systemMemoryUsed=$(echo "$top" | awk '/PhysMem/ {print $2}' || echo "N/A")
@@ -451,7 +473,8 @@ setModelInfo() {
   modelCapabilities=()
   modelSystemPrompt=""
   modelTemperature=""
-  section=""
+  local section=""
+  local line
 
   while IFS= read -r line; do # Read the content of the file line by line
     line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" # Trim leading/trailing whitespace
@@ -694,8 +717,11 @@ finishOutputIndexHtml() {
     showFooter "$titleLink"
   } >> "$outputIndexHtml"
 
+  local imagesHtml
   imagesHtml=$(showImages)
-  sed -i '' -e "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml"
+  local tmpfile
+  tmpfile=$(mktemp)
+  sed "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml" > "$tmpfile" && mv "$tmpfile" "$outputIndexHtml"
 }
 
 getSortedResultsDirectories() {
@@ -724,8 +750,9 @@ createMainIndexHtml() {
 
 createMainModelIndexHtml() {
   # create table of contents: list all models used in all run results, and links to every individual model run
-  modelsFound=()
-  modelsIndex=()
+  local modelsFound=()
+  local modelsIndex=()
+  local mainModelIndexHtml
 
   for dir in $(getSortedResultsDirectories); do # for each item in main results directory
     if [ -d "$dir" ]; then # if is a directory
@@ -733,7 +760,14 @@ createMainModelIndexHtml() {
         if [[ $file != *"/index.html" && $file != *"/models.html" ]]; then # skip index.html and models.html
           fileName="${file##*/}"
           modelName="${fileName%.html}" # remove .html to get model name
-          if [[ ! "${modelsFound[*]}" =~ "$modelName" ]]; then
+          local found=0
+          for f in "${modelsFound[@]}"; do
+            if [[ "$f" == "$modelName" ]]; then
+              found=1
+              break
+            fi
+          done
+          if [[ $found -eq 0 ]]; then
             modelsFound+=("$modelName")
           fi
           modelsIndex+=("$modelName:$dir/$fileName")
@@ -778,7 +812,7 @@ createMainModelIndexHtml() {
 
 runModelWithTimeout() {
   echo "$prompt" | ollama run --verbose "${model}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
-  pid=$!
+  local pid=$!
   (
     sleep "$TIMEOUT"
     if kill -0 $pid 2>/dev/null; then
@@ -787,7 +821,7 @@ runModelWithTimeout() {
     fi
 
   ) &
-  timeout_pid=$!
+  local timeout_pid=$!
 
   # Wait for the main process to complete
   if wait $pid 2>/dev/null; then
