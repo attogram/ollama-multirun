@@ -1,0 +1,32 @@
+#!/bin/bash
+
+case "$1" in
+  list)
+    echo "NAME           ID           SIZE      MODIFIED"
+    echo "model1:latest  abcdef123456 1.1 GB    1 day ago"
+    echo "model2:latest  654321fedcba 2.2 GB    2 days ago"
+    ;;
+  run)
+    echo "Running model $3"
+    echo "some output from the model"
+    ;;
+  stop)
+    echo "Stopping model $2"
+    ;;
+  show)
+    echo "Showing model $2"
+    ;;
+  -v)
+    echo "ollama version is 0.1.0"
+    ;;
+  ps)
+    echo "NAME      ID        SIZE      PROCESSOR"
+    echo "model1    abcdef    1.1 GB    cpu"
+    ;;
+  *)
+    echo "Unknown command: $1"
+    exit 1
+    ;;
+esac
+
+exit 0
