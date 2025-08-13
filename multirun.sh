@@ -37,6 +37,9 @@ OLLAMA_MULTIRUN_COPYRIGHT="Copyright (c) 2025 Ollama Bash Lib, Attogram Project 
 
 TIMEOUT="300" # number of seconds to allow model to respond
 addedImages=()
+mainCsvData=()
+mainJsonData=()
+mainCsvHeader=""
 
 usage() {
   local me
@@ -157,7 +160,7 @@ safeString() {
   input=${input:0:length} # Truncate to first LENGTH characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
   input=${input// /_} # Replace spaces with underscores
-  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_') # Replace non-allowed characters with underscores
+  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g') # Replace non-allowed characters with underscores
   echo "$input" # Output the sanitized string
 }
 
@@ -349,6 +352,18 @@ createMenu() {
     fi
   done
   echo '</span>';
+}
+
+cleanStatsFile() {
+  local file="$1"
+  if [ -f "$file" ]; then
+    # Use a temporary file to avoid issues with sed -i on different platforms
+    local tmpFile
+    tmpFile=$(mktemp)
+    # Remove ANSI escape codes
+    sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' "$file" > "$tmpFile"
+    mv "$tmpFile" "$file"
+  fi
 }
 
 setStats() {
@@ -646,6 +661,116 @@ createModelOutputHtml() {
   } > "$modelHtmlFile"
 }
 
+jsonEscape() {
+  local s="$1"
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\t'/\\t}
+  echo "$s"
+}
+
+csvEscape() {
+    local s="$1"
+    s=${s//\"/\"\"}
+    echo "\"$s\""
+}
+
+createModelOutputJson() {
+  modelJsonFile="$outputDirectory/$(safeString "$model" 80).json"
+  echo "$(getDateTime)" "Creating Model Output JSON: $modelJsonFile"
+  {
+    echo "{"
+    echo "  \"model\": \"$(jsonEscape "$model")\","
+    echo "  \"prompt\": \"$(jsonEscape "$prompt")\","
+    echo "  \"prompt_words\": $promptWords,"
+    echo "  \"prompt_bytes\": $promptBytes,"
+    echo "  \"response_words\": $responseWords,"
+    echo "  \"response_bytes\": $responseBytes,"
+    echo "  \"total_duration\": \"$(jsonEscape "$statsTotalDuration")\","
+    echo "  \"load_duration\": \"$(jsonEscape "$statsLoadDuration")\","
+    echo "  \"prompt_eval_count\": \"$(jsonEscape "$statsPromptEvalCount")\","
+    echo "  \"prompt_eval_duration\": \"$(jsonEscape "$statsPromptEvalDuration")\","
+    echo "  \"prompt_eval_rate\": \"$(jsonEscape "$statsPromptEvalRate")\","
+    echo "  \"eval_count\": \"$(jsonEscape "$statsEvalCount")\","
+    echo "  \"eval_duration\": \"$(jsonEscape "$statsEvalDuration")\","
+    echo "  \"eval_rate\": \"$(jsonEscape "$statsEvalRate")\","
+    echo "  \"model_architecture\": \"$(jsonEscape "$modelArchitecture")\","
+    echo "  \"model_parameters\": \"$(jsonEscape "$modelParameters")\","
+    echo "  \"model_context_length\": \"$(jsonEscape "$modelContextLength")\","
+    echo "  \"model_embedding_length\": \"$(jsonEscape "$modelEmbeddingLength")\","
+    echo "  \"model_quantization\": \"$(jsonEscape "$modelQuantization")\","
+    echo "  \"model_capabilities\": ["
+    local first_cap=true
+    for cap in "${modelCapabilities[@]}"; do
+      if [ "$first_cap" = true ]; then
+        first_cap=false
+      else
+        echo ","
+      fi
+      echo -n "    \"$(jsonEscape "$cap")\""
+    done
+    echo
+    echo "  ],"
+    echo "  \"model_system_prompt\": \"$(jsonEscape "$modelSystemPrompt")\","
+    echo "  \"ollama_size\": \"$(jsonEscape "$ollamaSize")\","
+    echo "  \"ollama_processor\": \"$(jsonEscape "$ollamaProcessor")\","
+    echo "  \"ollama_context\": \"$(jsonEscape "$ollamaContext")\","
+    echo "  \"ollama_version\": \"$(jsonEscape "$ollamaVersion")\","
+    echo "  \"system_arch\": \"$(jsonEscape "$systemArch")\","
+    echo "  \"system_processor\": \"$(jsonEscape "$systemProcessor")\","
+    echo "  \"system_memory_used\": \"$(jsonEscape "$systemMemoryUsed")\","
+    echo "  \"system_memory_avail\": \"$(jsonEscape "$systemMemoryAvail")\","
+    echo "  \"system_os_name\": \"$(jsonEscape "$systemOSName")\","
+    echo "  \"system_os_version\": \"$(jsonEscape "$systemOSVersion")\","
+    echo "  \"multirun_timeout\": $TIMEOUT"
+    echo "}"
+  } > "$modelJsonFile"
+}
+
+createModelOutputCsv() {
+  modelCsvFile="$outputDirectory/$(safeString "$model" 80).csv"
+  echo "$(getDateTime)" "Creating Model Output CSV: $modelCsvFile"
+  {
+    # Header
+    echo "\"key\",\"value\""
+    # Data
+    echo "\"model\",$(csvEscape "$model")"
+    echo "\"prompt\",$(csvEscape "$prompt")"
+    echo "\"prompt_words\",$(csvEscape "$promptWords")"
+    echo "\"prompt_bytes\",$(csvEscape "$promptBytes")"
+    echo "\"response_words\",$(csvEscape "$responseWords")"
+    echo "\"response_bytes\",$(csvEscape "$responseBytes")"
+    echo "\"total_duration\",$(csvEscape "$statsTotalDuration")"
+    echo "\"load_duration\",$(csvEscape "$statsLoadDuration")"
+    echo "\"prompt_eval_count\",$(csvEscape "$statsPromptEvalCount")"
+    echo "\"prompt_eval_duration\",$(csvEscape "$statsPromptEvalDuration")"
+    echo "\"prompt_eval_rate\",$(csvEscape "$statsPromptEvalRate")"
+    echo "\"eval_count\",$(csvEscape "$statsEvalCount")"
+    echo "\"eval_duration\",$(csvEscape "$statsEvalDuration")"
+    echo "\"eval_rate\",$(csvEscape "$statsEvalRate")"
+    echo "\"model_architecture\",$(csvEscape "$modelArchitecture")"
+    echo "\"model_parameters\",$(csvEscape "$modelParameters")"
+    echo "\"model_context_length\",$(csvEscape "$modelContextLength")"
+    echo "\"model_embedding_length\",$(csvEscape "$modelEmbeddingLength")"
+    echo "\"model_quantization\",$(csvEscape "$modelQuantization")"
+    echo "\"model_capabilities\",$(csvEscape "$(printf "%s;" "${modelCapabilities[@]}")")"
+    echo "\"model_system_prompt\",$(csvEscape "$modelSystemPrompt")"
+    echo "\"ollama_size\",$(csvEscape "$ollamaSize")"
+    echo "\"ollama_processor\",$(csvEscape "$ollamaProcessor")"
+    echo "\"ollama_context\",$(csvEscape "$ollamaContext")"
+    echo "\"ollama_version\",$(csvEscape "$ollamaVersion")"
+    echo "\"system_arch\",$(csvEscape "$systemArch")"
+    echo "\"system_processor\",$(csvEscape "$systemProcessor")"
+    echo "\"system_memory_used\",$(csvEscape "$systemMemoryUsed")"
+    echo "\"system_memory_avail\",$(csvEscape "$systemMemoryAvail")"
+    echo "\"system_os_name\",$(csvEscape "$systemOSName")"
+    echo "\"system_os_version\",$(csvEscape "$systemOSVersion")"
+    echo "\"multirun_timeout\",$(csvEscape "$TIMEOUT")"
+  } > "$modelCsvFile"
+}
+
 createOutputIndexHtml() {
   outputIndexHtml="$outputDirectory/index.html"
   echo "$(getDateTime)" "Creating Output Index Page: $outputIndexHtml"
@@ -722,6 +847,87 @@ finishOutputIndexHtml() {
   local tmpfile
   tmpfile=$(mktemp)
   sed "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml" > "$tmpfile" && mv "$tmpfile" "$outputIndexHtml"
+}
+
+addModelToMainReports() {
+  if [ -z "$mainCsvHeader" ]; then
+    mainCsvHeader=$(echo "\"model\",\"prompt\",\"prompt_words\",\"prompt_bytes\",\"response_words\",\"response_bytes\",\"total_duration\",\"load_duration\",\"prompt_eval_count\",\"prompt_eval_duration\",\"prompt_eval_rate\",\"eval_count\",\"eval_duration\",\"eval_rate\",\"model_architecture\",\"model_parameters\",\"model_context_length\",\"model_embedding_length\",\"model_quantization\",\"model_capabilities\",\"model_system_prompt\",\"ollama_size\",\"ollama_processor\",\"ollama_context\",\"ollama_version\",\"system_arch\",\"system_processor\",\"system_memory_used\",\"system_memory_avail\",\"system_os_name\",\"system_os_version\",\"multirun_timeout\"")
+  fi
+
+  local csv_line
+  csv_line=$(echo "$(csvEscape "$model"),$(csvEscape "$prompt"),\"$promptWords\",\"$promptBytes\",\"$responseWords\",\"$responseBytes\",$(csvEscape "$statsTotalDuration"),$(csvEscape "$statsLoadDuration"),$(csvEscape "$statsPromptEvalCount"),$(csvEscape "$statsPromptEvalDuration"),$(csvEscape "$statsPromptEvalRate"),$(csvEscape "$statsEvalCount"),$(csvEscape "$statsEvalDuration"),$(csvEscape "$statsEvalRate"),$(csvEscape "$modelArchitecture"),$(csvEscape "$modelParameters"),$(csvEscape "$modelContextLength"),$(csvEscape "$modelEmbeddingLength"),$(csvEscape "$modelQuantization"),$(csvEscape "$(printf "%s;" "${modelCapabilities[@]}")"),$(csvEscape "$modelSystemPrompt"),$(csvEscape "$ollamaSize"),$(csvEscape "$ollamaProcessor"),$(csvEscape "$ollamaContext"),$(csvEscape "$ollamaVersion"),$(csvEscape "$systemArch"),$(csvEscape "$systemProcessor"),$(csvEscape "$systemMemoryUsed"),$(csvEscape "$systemMemoryAvail"),$(csvEscape "$systemOSName"),$(csvEscape "$systemOSVersion"),\"$TIMEOUT\"")
+  mainCsvData+=("$csv_line")
+
+  local json_line
+  json_line=$(cat <<EOF
+{
+  "model": "$(jsonEscape "$model")",
+  "prompt": "$(jsonEscape "$prompt")",
+  "prompt_words": $promptWords,
+  "prompt_bytes": $promptBytes,
+  "response_words": $responseWords,
+  "response_bytes": $responseBytes,
+  "total_duration": "$(jsonEscape "$statsTotalDuration")",
+  "load_duration": "$(jsonEscape "$statsLoadDuration")",
+  "prompt_eval_count": "$(jsonEscape "$statsPromptEvalCount")",
+  "prompt_eval_duration": "$(jsonEscape "$statsPromptEvalDuration")",
+  "prompt_eval_rate": "$(jsonEscape "$statsPromptEvalRate")",
+  "eval_count": "$(jsonEscape "$statsEvalCount")",
+  "eval_duration": "$(jsonEscape "$statsEvalDuration")",
+  "eval_rate": "$(jsonEscape "$statsEvalRate")",
+  "model_architecture": "$(jsonEscape "$modelArchitecture")",
+  "model_parameters": "$(jsonEscape "$modelParameters")",
+  "model_context_length": "$(jsonEscape "$modelContextLength")",
+  "model_embedding_length": "$(jsonEscape "$modelEmbeddingLength")",
+  "model_quantization": "$(jsonEscape "$modelQuantization")",
+  "model_capabilities": [
+$(for cap in "${modelCapabilities[@]}"; do echo "    \"$(jsonEscape "$cap")\","; done | sed '$ s/,$//')
+  ],
+  "model_system_prompt": "$(jsonEscape "$modelSystemPrompt")",
+  "ollama_size": "$(jsonEscape "$ollamaSize")",
+  "ollama_processor": "$(jsonEscape "$ollamaProcessor")",
+  "ollama_context": "$(jsonEscape "$ollamaContext")",
+  "ollama_version": "$(jsonEscape "$ollamaVersion")",
+  "system_arch": "$(jsonEscape "$systemArch")",
+  "system_processor": "$(jsonEscape "$systemProcessor")",
+  "system_memory_used": "$(jsonEscape "$systemMemoryUsed")",
+  "system_memory_avail": "$(jsonEscape "$systemMemoryAvail")",
+  "system_os_name": "$(jsonEscape "$systemOSName")",
+  "system_os_version": "$(jsonEscape "$systemOSVersion")",
+  "multirun_timeout": $TIMEOUT
+}
+EOF
+)
+  mainJsonData+=("$json_line")
+}
+
+createMainCsvReport() {
+  mainCsvFile="$outputDirectory/main.csv"
+  echo "$(getDateTime)" "Creating Main CSV Report: $mainCsvFile"
+  {
+    echo "$mainCsvHeader"
+    for row in "${mainCsvData[@]}"; do
+      echo "$row"
+    done
+  } > "$mainCsvFile"
+}
+
+createMainJsonReport() {
+  mainJsonFile="$outputDirectory/main.json"
+  echo "$(getDateTime)" "Creating Main JSON Report: $mainJsonFile"
+  {
+    echo "["
+    local first=1
+    for row in "${mainJsonData[@]}"; do
+      if [ $first -ne 1 ]; then
+        echo ","
+      fi
+      echo "$row"
+      first=0
+    done
+    echo
+    echo "]"
+  } > "$mainJsonFile"
 }
 
 getSortedResultsDirectories() {
@@ -892,11 +1098,17 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   setOllamaStats
   parseThinkingOutput
   setModelInfo
+  cleanStatsFile "$modelStatsTxt"
   setStats
   createModelOutputHtml
+  createModelOutputCsv
+  createModelOutputJson
   addModelToOutputIndexHtml
+  addModelToMainReports
   stopModel "$model"
 done
 finishOutputIndexHtml
+createMainCsvReport
+createMainJsonReport
 createMainModelIndexHtml
 echo; echo "$(getDateTime)" "Done: $outputDirectory/"
