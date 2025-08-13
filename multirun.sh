@@ -37,9 +37,9 @@ OLLAMA_MULTIRUN_COPYRIGHT="Copyright (c) 2025 Ollama Bash Lib, Attogram Project 
 
 TIMEOUT="300" # number of seconds to allow model to respond
 addedImages=()
-masterCsvData=()
-masterJsonData=()
-masterCsvHeader=""
+mainCsvData=()
+mainJsonData=()
+mainCsvHeader=""
 
 usage() {
   local me
@@ -849,14 +849,14 @@ finishOutputIndexHtml() {
   sed "s#<!-- IMAGES -->#${imagesHtml}#" "$outputIndexHtml" > "$tmpfile" && mv "$tmpfile" "$outputIndexHtml"
 }
 
-addModelToMasterReports() {
-  if [ -z "$masterCsvHeader" ]; then
-    masterCsvHeader=$(echo "\"model\",\"prompt\",\"prompt_words\",\"prompt_bytes\",\"response_words\",\"response_bytes\",\"total_duration\",\"load_duration\",\"prompt_eval_count\",\"prompt_eval_duration\",\"prompt_eval_rate\",\"eval_count\",\"eval_duration\",\"eval_rate\",\"model_architecture\",\"model_parameters\",\"model_context_length\",\"model_embedding_length\",\"model_quantization\",\"model_capabilities\",\"model_system_prompt\",\"ollama_size\",\"ollama_processor\",\"ollama_context\",\"ollama_version\",\"system_arch\",\"system_processor\",\"system_memory_used\",\"system_memory_avail\",\"system_os_name\",\"system_os_version\",\"multirun_timeout\"")
+addModelToMainReports() {
+  if [ -z "$mainCsvHeader" ]; then
+    mainCsvHeader=$(echo "\"model\",\"prompt\",\"prompt_words\",\"prompt_bytes\",\"response_words\",\"response_bytes\",\"total_duration\",\"load_duration\",\"prompt_eval_count\",\"prompt_eval_duration\",\"prompt_eval_rate\",\"eval_count\",\"eval_duration\",\"eval_rate\",\"model_architecture\",\"model_parameters\",\"model_context_length\",\"model_embedding_length\",\"model_quantization\",\"model_capabilities\",\"model_system_prompt\",\"ollama_size\",\"ollama_processor\",\"ollama_context\",\"ollama_version\",\"system_arch\",\"system_processor\",\"system_memory_used\",\"system_memory_avail\",\"system_os_name\",\"system_os_version\",\"multirun_timeout\"")
   fi
 
   local csv_line
   csv_line=$(echo "$(csvEscape "$model"),$(csvEscape "$prompt"),\"$promptWords\",\"$promptBytes\",\"$responseWords\",\"$responseBytes\",$(csvEscape "$statsTotalDuration"),$(csvEscape "$statsLoadDuration"),$(csvEscape "$statsPromptEvalCount"),$(csvEscape "$statsPromptEvalDuration"),$(csvEscape "$statsPromptEvalRate"),$(csvEscape "$statsEvalCount"),$(csvEscape "$statsEvalDuration"),$(csvEscape "$statsEvalRate"),$(csvEscape "$modelArchitecture"),$(csvEscape "$modelParameters"),$(csvEscape "$modelContextLength"),$(csvEscape "$modelEmbeddingLength"),$(csvEscape "$modelQuantization"),$(csvEscape "$(printf "%s;" "${modelCapabilities[@]}")"),$(csvEscape "$modelSystemPrompt"),$(csvEscape "$ollamaSize"),$(csvEscape "$ollamaProcessor"),$(csvEscape "$ollamaContext"),$(csvEscape "$ollamaVersion"),$(csvEscape "$systemArch"),$(csvEscape "$systemProcessor"),$(csvEscape "$systemMemoryUsed"),$(csvEscape "$systemMemoryAvail"),$(csvEscape "$systemOSName"),$(csvEscape "$systemOSVersion"),\"$TIMEOUT\"")
-  masterCsvData+=("$csv_line")
+  mainCsvData+=("$csv_line")
 
   local json_line
   json_line=$(cat <<EOF
@@ -898,27 +898,27 @@ $(for cap in "${modelCapabilities[@]}"; do echo "    \"$(jsonEscape "$cap")\",";
 }
 EOF
 )
-  masterJsonData+=("$json_line")
+  mainJsonData+=("$json_line")
 }
 
-createMasterCsvReport() {
-  masterCsvFile="$outputDirectory/master.csv"
-  echo "$(getDateTime)" "Creating Master CSV Report: $masterCsvFile"
+createMainCsvReport() {
+  mainCsvFile="$outputDirectory/main.csv"
+  echo "$(getDateTime)" "Creating Main CSV Report: $mainCsvFile"
   {
-    echo "$masterCsvHeader"
-    for row in "${masterCsvData[@]}"; do
+    echo "$mainCsvHeader"
+    for row in "${mainCsvData[@]}"; do
       echo "$row"
     done
-  } > "$masterCsvFile"
+  } > "$mainCsvFile"
 }
 
-createMasterJsonReport() {
-  masterJsonFile="$outputDirectory/master.json"
-  echo "$(getDateTime)" "Creating Master JSON Report: $masterJsonFile"
+createMainJsonReport() {
+  mainJsonFile="$outputDirectory/main.json"
+  echo "$(getDateTime)" "Creating Main JSON Report: $mainJsonFile"
   {
     echo "["
     local first=1
-    for row in "${masterJsonData[@]}"; do
+    for row in "${mainJsonData[@]}"; do
       if [ $first -ne 1 ]; then
         echo ","
       fi
@@ -927,7 +927,7 @@ createMasterJsonReport() {
     done
     echo
     echo "]"
-  } > "$masterJsonFile"
+  } > "$mainJsonFile"
 }
 
 getSortedResultsDirectories() {
@@ -1104,11 +1104,11 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   createModelOutputCsv
   createModelOutputJson
   addModelToOutputIndexHtml
-  addModelToMasterReports
+  addModelToMainReports
   stopModel "$model"
 done
 finishOutputIndexHtml
-createMasterCsvReport
-createMasterJsonReport
+createMainCsvReport
+createMainJsonReport
 createMainModelIndexHtml
 echo; echo "$(getDateTime)" "Done: $outputDirectory/"
