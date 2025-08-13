@@ -629,6 +629,8 @@ createModelOutputHtml() {
     textarea "$(cat "$modelOutputTxt")" 3 25 # 3 padding, max 25 lines
     echo "</p>"
 
+    echo "<p><a href='./$(safeString "$model" 80).json'>JSON test results</a> <a href='./$(safeString "$model" 80).csv'>CSV test results</a></p>"
+
     echo "<div class='box'><table>"
     echo "<tr><td class='left' colspan='2'>Stats (<a href='./$(safeString "$model" 80).stats.txt'>raw</a>)</td></tr>"
     echo "<tr><td class='left'>Words</td><td>$responseWords</td></tr>"
@@ -781,6 +783,7 @@ createOutputIndexHtml() {
     createMenu "index"
     echo  "</header>"
     showPrompt
+    echo "<p><a href='main.json'>JSON test results</a> <a href='main.csv'>CSV test results</a></p>"
     echo "<!-- IMAGES -->"
     cat <<- "EOF"
 <table class='sortable'>
