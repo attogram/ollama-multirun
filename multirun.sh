@@ -29,7 +29,7 @@ if [ -z "$BASH_VERSION" ] || ! (echo "$BASH_VERSION" | awk -F. '{exit !($1 > 3 |
 fi
 
 OLLAMA_MULTIRUN_NAME="ollama-multirun"
-OLLAMA_MULTIRUN_VERSION="5.21.3"
+OLLAMA_MULTIRUN_VERSION="5.21.4"
 OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
 OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
 OLLAMA_MULTIRUN_LICENSE="MIT"
