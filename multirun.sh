@@ -29,7 +29,7 @@ if [ -z "$BASH_VERSION" ] || ! (echo "$BASH_VERSION" | awk -F. '{exit !($1 > 3 |
 fi
 
 OLLAMA_MULTIRUN_NAME="ollama-multirun"
-OLLAMA_MULTIRUN_VERSION="5.22.2"
+OLLAMA_MULTIRUN_VERSION="5.23.0"
 OLLAMA_MULTIRUN_URL="https://github.com/attogram/ollama-multirun"
 OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
 OLLAMA_MULTIRUN_LICENSE="MIT"
@@ -160,7 +160,8 @@ safeString() {
   input=${input:0:length} # Truncate to first LENGTH characters
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]') # Convert to lowercase
   input=${input// /_} # Replace spaces with underscores
-  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g') # Replace non-allowed characters with underscores
+  # input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g') # Replace non-allowed characters with underscores
+  input=$(echo "$input" | sed 's/[^a-zA-Z0-9_]/_/g' | tr -cd 'a-zA-Z0-9_') # Replace non-allowed characters with underscores
   echo "$input" # Output the sanitized string
 }
 
