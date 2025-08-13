@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "PhysMem: 1024M used, 2048M unused."

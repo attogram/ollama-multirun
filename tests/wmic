@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "TotalVisibleMemorySize=4194304"
+echo "FreePhysicalMemory=2097152"

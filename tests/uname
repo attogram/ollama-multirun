@@ -1,0 +1,18 @@
+#!/bin/bash
+case "$1" in
+  -m)
+    echo "x86_64"
+    ;;
+  -p)
+    echo "x86_64"
+    ;;
+  -s)
+    echo "Linux"
+    ;;
+  -r)
+    echo "5.4.0-1-generic"
+    ;;
+  *)
+    echo "Linux"
+    ;;
+esac
