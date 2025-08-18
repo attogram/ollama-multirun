@@ -35,6 +35,16 @@ OLLAMA_MULTIRUN_DISCORD="https://discord.gg/BGQJCbYVBa"
 OLLAMA_MULTIRUN_LICENSE="MIT"
 OLLAMA_MULTIRUN_COPYRIGHT="Copyright (c) 2025 Ollama Bash Lib, Attogram Project <https://github.com/attogram>"
 
+# Source the Ollama Bash Library
+OLLAMA_BASH_LIB="ollama_bash_lib.sh"
+if [ ! -f "$OLLAMA_BASH_LIB" ]; then
+  echo "Error: Ollama Bash Library not found: $OLLAMA_BASH_LIB" >&2
+  exit 1
+fi
+# shellcheck source=ollama_bash_lib.sh
+source "$OLLAMA_BASH_LIB"
+OLLAMA_LIB_TIMEOUT="${TIMEOUT:-300}"
+
 TIMEOUT="300" # number of seconds to allow model to respond
 addedImages=()
 mainCsvData=()
@@ -120,7 +130,7 @@ getDateTime() {
 }
 
 setModels() {
-  models=($(ollama list | awk '{if (NR > 1) print $1}' | sort)) # Get list of models, sorted alphabetically
+  models=($(ollama_list_array)) # Get list of models, sorted alphabetically
   if [ -z "${models[*]}" ]; then
     echo "No models found. Please install models with 'ollama pull <model-name>'" >&2
     exit 1
@@ -262,31 +272,9 @@ showImages() {
   fi
 }
 
-clearModel() {
-  if ! command -v expect >/dev/null 2>&1; then
-    echo "Warning: 'expect' command not found, skipping model clearing." >&2
-    return
-  fi
-  echo "$(getDateTime)" "Clearing model session: $1"
-  (
-    expect \
-    -c "spawn ollama run $1" \
-    -c "expect \">>> \"" \
-    -c 'send -- "/clear\n"' \
-    -c "expect \"Cleared session context\"" \
-    -c 'send -- "/bye\n"' \
-    -c "expect eof" \
-    ;
-  ) > /dev/null 2>&1 # Suppress output
-  if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clear model session: $1" >&2
-    # exit 1
-  fi
-}
-
 stopModel() {
   echo "$(getDateTime)" "Stopping model: $1"
-  if ! ollama stop "$1"; then
+  if ! ollama_model_unload "$1"; then
     echo "$(getDateTime)" "ERROR: Failed to stop model: $1" >&2
     # exit 1
   fi
@@ -355,50 +343,33 @@ createMenu() {
   echo '</span>';
 }
 
-cleanStatsFile() {
-  local file="$1"
-  if [ -f "$file" ]; then
-    # Use a temporary file to avoid issues with sed -i on different platforms
-    local tmpFile
-    tmpFile=$(mktemp)
-    # Remove ANSI escape codes
-    sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' "$file" > "$tmpFile"
-    mv "$tmpFile" "$file"
-  fi
-}
-
 setStats() {
-  statsTotalDuration=$(grep -oE "total duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
-  statsLoadDuration=$(grep -oE "load duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
-  statsPromptEvalCount=$(grep -oE "prompt eval count:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $4, $5 }')
-  statsPromptEvalDuration=$(grep -oE "prompt eval duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
-  statsPromptEvalRate=$(grep -oE "prompt eval rate:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $4, $5 }')
-  statsEvalCount=$(grep -oE "^eval count:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $3, $4 }')
-  statsEvalDuration=$(grep -oE "^eval duration:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $NF }')
-  statsEvalRate=$(grep -oE "^eval rate:[[:space:]]+(.*)" "$modelStatsTxt" | awk '{ print $3, $4 }')
+  statsTotalDuration=$(echo "$modelJson" | jq -r '.total_duration')
+  statsLoadDuration=$(echo "$modelJson" | jq -r '.load_duration')
+  statsPromptEvalCount=$(echo "$modelJson" | jq -r '.prompt_eval_count')
+  statsPromptEvalDuration=$(echo "$modelJson" | jq -r '.prompt_eval_duration')
+  statsPromptEvalRate=$(echo "$modelJson" | jq -r '.prompt_eval_rate')
+  statsEvalCount=$(echo "$modelJson" | jq -r '.eval_count')
+  statsEvalDuration=$(echo "$modelJson" | jq -r '.eval_duration')
+  statsEvalRate=$(echo "$modelJson" | jq -r '.eval_rate')
 
-  mapfile -t addedImages < <(grep -oE "Added image '(.*)'" "$modelStatsTxt" | awk '{ print $NF }' | sed "s/'//g")
-  if [ ${#addedImages[@]} -gt 0 ]; then
-    for image in "${addedImages[@]}"; do
-      if ! [ -f "$outputDirectory/$(basename "$image")" ]; then
-        echo "Copying image: $image"
-        cp "$image" "$outputDirectory"
-      fi
-    done
-  fi
+  # The ollama_generate_json function does not return image information.
+  # This functionality will be lost for now. A future update could re-introduce it
+  # if the library is updated to support it.
+  addedImages=()
 
   responseWords=$(wc -w < "$modelOutputTxt" | awk '{print $1}')
   responseBytes=$(wc -c < "$modelOutputTxt" | awk '{print $1}')
 }
 
 setOllamaStats() {
-  ollamaVersion=$(ollama -v | awk '{print $4}')
-  # ps columns: 1:NAME, 2:ID, 3:SIZE_NUM 4:SIZE_GB, 5:PROCESSOR_% 6:PROCESS_TYPE, 7:CONTEXT, 8:UNTIL
-  ollamaPs=$(ollama ps | awk '{print $1, $2, $3, $4, $5, $6, $7}' | sed '1d') # Get columns from ollama ps output, skipping the header
-  ollamaModel=$(echo "$ollamaPs" | awk '{print $1}') # Get the model name
-  ollamaSize=$(echo "$ollamaPs" | awk '{print $3, $4}') # Get the model size
-  ollamaProcessor=$(echo "$ollamaPs" | awk '{print $5, $6}') # Get the processor
-  ollamaContext=$(echo "$ollamaPs" | awk '{print $7}') # Get the context size
+  ollamaVersion=$(ollama_app_version)
+  local ps_json
+  ps_json=$(ollama_ps_json)
+  ollamaModel=$(echo "$ps_json" | jq -r ".models[] | select(.name == \"$model\") | .name")
+  ollamaSize=$(echo "$ps_json" | jq -r ".models[] | select(.name == \"$model\") | .size")
+  ollamaProcessor="N/A" # This info is not available from the API
+  ollamaContext=$(echo "$ps_json" | jq -r ".models[] | select(.name == \"$model\") | .details.context_length")
 }
 
 setSystemStats() {
@@ -476,79 +447,27 @@ showSystemStats() {
   echo "</table></div>"
 }
 
-createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to text file
+createModelInfoTxt() { # Create model info files - for each model, do 'ollama show' and save the results to a json file
   for model in "${models[@]}"; do
     modelInfoTxt="$outputDirectory/$(safeString "$model" 80).info.txt"
     echo "$(getDateTime)" "Creating Model Info Text: $modelInfoTxt"
-    ollama show "$model" > "$modelInfoTxt"
+    ollama_show_json "$model" > "$modelInfoTxt"
   done
 }
 
 setModelInfo() {
   modelInfoTxt="$outputDirectory/$(safeString "$model" 80).info.txt"
-  modelCapabilities=()
-  modelSystemPrompt=""
-  modelTemperature=""
-  local section=""
-  local line
 
-  while IFS= read -r line; do # Read the content of the file line by line
-    line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" # Trim leading/trailing whitespace
-    if [[ -z "$line" ]]; then
-      section=""
-      continue; # Skip empty lines
-    fi
-    if [[ $line == "Model"* ]]; then
-      section="Model"
-      continue
-    elif [[ $line == "Capabilities"* ]]; then
-      section="Capabilities"
-      continue
-    elif [[ $line == "System"* ]]; then
-      section="System"
-      continue
-    elif [[ $line == "Parameters"* ]]; then
-      section="Parameters"
-      continue
-    elif [[ $line == "License"* ]]; then
-      section="License"
-      continue
-    elif [[ $line == "Projector"* ]]; then
-      section="Projector"
-      continue
-    fi
+  modelArchitecture=$(jq -r '.details.family' < "$modelInfoTxt")
+  modelParameters=$(jq -r '.details.parameter_size' < "$modelInfoTxt")
+  modelContextLength=$(jq -r '.details.context_length' < "$modelInfoTxt")
+  modelEmbeddingLength="N/A" # Not in the JSON output
+  modelQuantization=$(jq -r '.details.quantization_level' < "$modelInfo...
+  modelTemperature=$(jq -r '.details.temperature' < "$modelInfoTxt")
 
-    case $section in
-      "Model")
-        if [[ "$line" == "architecture"* ]]; then
-          modelArchitecture=$(echo "$line" | awk '/architecture/ {print $2}') # Get model architecture
-        fi
-        if [[ "$line" == "parameters"* ]]; then
-          modelParameters=$(echo "$line" | awk '/parameters/ {print $2}') # Get model parameters
-        fi
-        if [[ "$line" == "context length"* ]]; then
-          modelContextLength=$(echo "$line" | awk '/context length/ {print $3}') # Get model context length
-        fi
-        if [[ "$line" == "embedding length"* ]]; then
-          modelEmbeddingLength=$(echo "$line" | awk '/embedding length/ {print $3}') # Get model embedding length
-        fi
-        if [[ "$line" == "quantization"* ]]; then
-          modelQuantization=$(echo "$line" | awk '/quantization/ {print $2}') # Get model quantization
-        fi
-        ;;
-      "Capabilities")
-        modelCapabilities+=("$line")
-        ;;
-      "System")
-        modelSystemPrompt+="$line"$'\n'
-        ;;
-      "Parameters")
-        if [[ "$line" == "temperature"* ]]; then
-          modelTemperature=$(echo "$line" | awk '/temperature/ {print $2}') # Get model temperature
-        fi
-        ;;
-    esac
-  done < "$modelInfoTxt"
+  mapfile -t modelCapabilities < <(jq -r '.details.families[]' < "$modelInfoTxt")
+
+  modelSystemPrompt=$(jq -r '.system' < "$modelInfoTxt")
 }
 
 createModelsOverviewHtml() {
@@ -1020,62 +939,26 @@ createMainModelIndexHtml() {
   } > "$mainModelIndexHtml"
 }
 
-runModelWithTimeout() {
-  echo "$prompt" | ollama run --verbose "${model}" > "${modelOutputTxt}" 2> "${modelStatsTxt}" &
-  local pid=$!
-  (
-    sleep "$TIMEOUT"
-    if kill -0 $pid 2>/dev/null; then
-      echo "[ERROR: Multirun Timeout after ${TIMEOUT} seconds]" > "${modelOutputTxt}"
-      kill $pid 2>/dev/null
+runModel() {
+    OLLAMA_LIB_STREAM=0
+    modelJson=$(ollama_generate_json "$model" "$prompt")
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        echo "[ERROR: ollama_generate_json failed with exit code $exit_code]" > "$modelOutputTxt"
+        return 1
     fi
+    echo "$modelJson" | jq -r '.response' > "$modelOutputTxt"
+    echo "$modelJson" > "$modelStatsTxt" # Save the full JSON for stats parsing
 
-  ) &
-  local timeout_pid=$!
-
-  # Wait for the main process to complete
-  if wait $pid 2>/dev/null; then
-    # Main process completed successfully, kill the timeout process
-    if kill -0 $timeout_pid 2>/dev/null; then
-      kill $timeout_pid 2>/dev/null
-      wait $timeout_pid 2>/dev/null  # Clean up the timeout process
+    local modelThinkingTxt
+    modelThinkingTxt="$outputDirectory/$(safeString "$model" 80).thinking.txt"
+    local thinking
+    thinking=$(echo "$modelJson" | jq -r '.thinking // empty')
+    if [ -n "$thinking" ]; then
+        echo "$(getDateTime)" "Creating Thinking Text: $modelThinkingTxt"
+        echo "$thinking" > "$modelThinkingTxt"
     fi
-  else
-    # Main process was killed (likely by timeout), wait for timeout process
-    wait $timeout_pid 2>/dev/null
-  fi
-
 }
-
-parseThinkingOutput() {
-  local modelThinkingTxt
-  modelThinkingTxt="$outputDirectory/$(safeString "$model" 80).thinking.txt"
-
-  # Check for either <think> tags or Thinking... patterns
-  if grep -q -E "(<think>|Thinking\.\.\.)" "$modelOutputTxt"; then
-    #echo "Found thinking content in $modelOutputTxt, extracting..."
-
-    # Read the entire file content
-    local content
-    content=$(cat "$modelOutputTxt")
-
-    # Extract thinking content
-    local thinkingContent=""
-    thinkingContent+=$(echo "$content" | sed -n '/<think>/,/<\/think>/p' | sed '1d;$d')
-    thinkingContent+=$(echo "$content" | sed -n '/Thinking\.\.\./,/\.\.\.done thinking\./p' | sed '1d;$d')
-
-    # Remove thinking content from original
-    content=$(echo "$content" | sed '/<think>/,/<\/think>/d')
-    content=$(echo "$content" | sed '/Thinking\.\.\./,/\.\.\.done thinking\./d')
-
-    echo "$(getDateTime)" "Creating Thinking Text: $modelThinkingTxt"
-    echo "$thinkingContent" > "$modelThinkingTxt"
-
-    echo "$(getDateTime)" "Updating Model Output Text: $modelOutputTxt"
-    echo "$content" > "$modelOutputTxt"
-  fi
-}
-
 export OLLAMA_MAX_LOADED_MODELS=1
 
 parseCommandLine "$@"
@@ -1097,12 +980,10 @@ for model in "${models[@]}"; do # Loop through each model and run it with the gi
   modelStatsTxt="$outputDirectory/$(safeString "$model" 80).stats.txt"
   echo "$(getDateTime)" "Creating Model Output Text: $modelOutputTxt"
   echo "$(getDateTime)" "Creating Model Stats Text: $modelStatsTxt"
-  runModelWithTimeout
+  runModel
   setSystemMemoryStats
   setOllamaStats
-  parseThinkingOutput
   setModelInfo
-  cleanStatsFile "$modelStatsTxt"
   setStats
   createModelOutputHtml
   createModelOutputCsv
