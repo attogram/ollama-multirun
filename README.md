@@ -8,15 +8,25 @@ saving the output and performance statistics as easily navigable web pages.
 Useful for comparing model responses, tracking performance
 and documenting your local AI experiments
 
+![Release](https://img.shields.io/github/v/release/attogram/ollama-multirun?style=flat)
+![License](https://img.shields.io/github/license/attogram/ollama-multirun?style=flat)
+![Bash ≥3.2](https://img.shields.io/badge/bash-%3E=3.2-blue?style=flat)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/attogram/ollama-multirun?style=flat)
+![GitHub stars](https://img.shields.io/github/stars/attogram/ollama-multirun?style=flat)
+![GitHub watchers](https://img.shields.io/github/watchers/attogram/ollama-multirun?style=flat)
+![Forks](https://img.shields.io/github/forks/attogram/ollama-multirun?style=flat)
+![Issues](https://img.shields.io/github/issues/attogram/ollama-multirun?style=flat)
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 Demo: https://attogram.github.io/ai_test_zone/
 
 Repo: https://github.com/attogram/ollama-multirun
 
 For Help and Discussions please join the [Attogram Discord Channel](https://discord.gg/BGQJCbYVBa)
 
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 
 ## Screenshots
 
